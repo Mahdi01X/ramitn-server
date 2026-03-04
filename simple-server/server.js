@@ -119,6 +119,7 @@ gameNs.on('connection', (socket) => {
     socket.emit('room_created', {
       roomCode: code,
       roomId,
+      numPlayers,
       players: room.players.map(p => ({ id: p.id, name: p.name, ready: p.ready })),
     });
   });
@@ -156,6 +157,7 @@ gameNs.on('connection', (socket) => {
       socket.emit('room_joined', {
         roomCode: room.code,
         roomId: room.id,
+        numPlayers: room.numPlayers,
         players: room.players.map(p => ({ id: p.id, name: p.name, ready: p.ready })),
       });
       return;
@@ -184,6 +186,7 @@ gameNs.on('connection', (socket) => {
     socket.emit('room_joined', {
       roomCode: room.code,
       roomId: room.id,
+      numPlayers: room.numPlayers,
       players: room.players.map(p => ({ id: p.id, name: p.name, ready: p.ready })),
     });
   });
@@ -294,6 +297,8 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`   Running on port ${PORT}`);
   console.log(`   http://localhost:${PORT}\n`);
 });
+
+
 
 
 
