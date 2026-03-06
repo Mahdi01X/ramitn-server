@@ -176,6 +176,7 @@ function createGameState(roomPlayers) {
     socketId: p.socketId,
     hand: [],
     hasOpened: false,
+    openingScore: 0,
     totalScore: 0,
     drewFromDiscard: false,
   }));
@@ -218,9 +219,10 @@ function getPlayerView(game, playerIdx) {
         id: pl.id,
         name: pl.name,
         handCount: pl.hand.length,
-        melds: [], // per-player melds not tracked separately in this simplified version
+        melds: [],
         totalScore: pl.totalScore,
         hasOpened: pl.hasOpened,
+        openingScore: pl.openingScore || 0,
         isBot: false,
         isConnected: true,
       })),
@@ -415,7 +417,15 @@ gameNs.on('connection', (socket) => {
       switch (action.type) {
         case 'draw_deck': {
           if (game.turnStep !== 'draw') throw new Error('Tu dois d\'abord piocher');
-          if (game.drawPile.length === 0) throw new Error('La pioche est vide');
+          // Reshuffle discard pile if draw pile is empty
+          if (game.drawPile.length === 0) {
+            if (game.discardPile.length <= 1) throw new Error('Plus de cartes disponibles');
+            const topDiscard = game.discardPile.pop();
+            // Shuffle remaining discard pile into draw pile
+            game.drawPile = game.discardPile.sort(() => Math.random() - 0.5);
+            game.discardPile = [topDiscard];
+            console.log(`🔄 Reshuffle: ${game.drawPile.length} cards back in draw pile`);
+          }
           const card = game.drawPile.pop();
           currentPlayer.hand.push(card);
           currentPlayer.drewFromDiscard = false;
@@ -491,6 +501,7 @@ gameNs.on('connection', (socket) => {
             });
           }
           currentPlayer.hasOpened = true;
+          currentPlayer.openingScore = total;
           currentPlayer._stagedMelds = [];
           break;
         }
@@ -510,12 +521,40 @@ gameNs.on('connection', (socket) => {
           const meld = game.tableMelds.find(m => m.id === meldId);
           if (!card || !meld) throw new Error('Carte ou paquet invalide');
 
-          // Try adding card to meld
-          const testCards = [...meld.cards, card];
-          if (!isValidMeld(testCards)) throw new Error('Cette carte ne peut pas être ajoutée à ce paquet');
-          if (meld.type === 'set' && testCards.length > 4) throw new Error('Un brelan ne peut pas avoir plus de 4 cartes');
+          // Try adding card at end
+          let addedEnd = isValidMeld([...meld.cards, card]);
+          let addedStart = !addedEnd && isValidMeld([card, ...meld.cards]);
+          if (meld.type === 'set' && meld.cards.length >= 4) {
+            addedEnd = false; addedStart = false;
+          }
 
-          meld.cards.push(card);
+          // Check joker swap: if card replaces a joker in the meld
+          let jokerSwapped = null;
+          if (!addedEnd && !addedStart && !card.isJoker) {
+            for (let ji = 0; ji < meld.cards.length; ji++) {
+              if (meld.cards[ji].isJoker) {
+                const testCards = [...meld.cards];
+                testCards[ji] = card;
+                if (isValidMeld(testCards)) {
+                  jokerSwapped = meld.cards[ji];
+                  meld.cards[ji] = card;
+                  currentPlayer.hand = currentPlayer.hand.filter(h => h.id !== cardId);
+                  currentPlayer.hand.push(jokerSwapped);
+                  break;
+                }
+              }
+            }
+          }
+
+          if (jokerSwapped) break; // Joker was swapped
+
+          if (!addedEnd && !addedStart) throw new Error('Cette carte ne peut pas être ajoutée à ce paquet');
+
+          if (addedEnd) {
+            meld.cards.push(card);
+          } else {
+            meld.cards.unshift(card);
+          }
           currentPlayer.hand = currentPlayer.hand.filter(h => h.id !== cardId);
           break;
         }
@@ -526,11 +565,14 @@ gameNs.on('connection', (socket) => {
           const card = currentPlayer.hand.find(c => c.id === cardId);
           if (!card) throw new Error('Carte introuvable');
 
-          // Check if player drew from discard and is trying to discard the same card
-          // (not enforced in this version — add if needed)
-
           currentPlayer.hand = currentPlayer.hand.filter(h => h.id !== cardId);
           game.discardPile.push(card);
+
+          // Penalty: drew from discard but didn't open → 100 pts
+          if (currentPlayer.drewFromDiscard && !currentPlayer.hasOpened) {
+            currentPlayer.totalScore += 100;
+            console.log(`⚠️ ${currentPlayer.name} gets 100pts penalty (drew from discard without opening)`);
+          }
 
           // Check win condition
           if (currentPlayer.hand.length === 0) {
@@ -601,6 +643,20 @@ gameNs.on('connection', (socket) => {
         playerId,
         players: room.players.map(p => ({ id: p.id, name: p.name, ready: p.ready })),
       });
+
+      // If game is in progress and only 1 player remains, declare them winner
+      if (room.game && room.players.length === 1) {
+        const winner = room.players[0];
+        console.log(`🏆 Only 1 player left in room ${room.code}, ${winner.name} wins by forfeit`);
+        gameNs.to(roomId).emit('game_over_forfeit', {
+          winnerId: winner.id,
+          winnerName: winner.name,
+          reason: 'L\'adversaire a quitté la partie',
+        });
+        // Clean up game
+        room.game = null;
+      }
+
       if (room.players.length === 0) {
         rooms.delete(roomId);
         codeToRoom.delete(room.code);
