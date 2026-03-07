@@ -1,0 +1,12 @@
+{
+  "name": "rami-tunisien",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["shared", "server"],
+  "scripts": {
+    "build": "npm run build -w shared && npm run build -w server",
+    "test": "npm test -w shared && npm test -w server",
+    "lint": "npm run lint -w shared && npm run lint -w server"
+  }
+}
+

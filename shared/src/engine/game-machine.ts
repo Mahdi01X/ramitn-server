@@ -1,0 +1,254 @@
+import { Card } from '../types/card';
+import { Meld, MeldType } from '../types/meld';
+import { Player } from '../types/player';
+import { GameConfig, DEFAULT_CONFIG } from '../types/game-config';
+import { GameState, GamePhase, TurnStep, GameAction, GameError } from '../types/game-state';
+import { createDeck, shuffle, deal } from './deck';
+import { drawFromDeck, drawFromDiscard, meld, layoff, replaceJoker, discard } from './turn';
+import { calculateRoundScores, checkGameEnd } from './scoring';
+
+let gameIdCounter = 0;
+
+/** Create a new game with initial state */
+export function createGame(
+  playerInfos: { id: string; name: string; isBot: boolean }[],
+  config: Partial<GameConfig> = {},
+): GameState {
+  const fullConfig: GameConfig = { ...DEFAULT_CONFIG, ...config, numPlayers: playerInfos.length };
+
+  const players: Player[] = playerInfos.map(info => ({
+    id: info.id,
+    name: info.name,
+    hand: [],
+    melds: [],
+    score: 0,
+    totalScore: 0,
+    hasOpened: false,
+    isBot: info.isBot,
+    isConnected: true,
+  }));
+
+  const state: GameState = {
+    id: `game_${++gameIdCounter}_${Date.now()}`,
+    config: fullConfig,
+    phase: GamePhase.Waiting,
+    turnStep: TurnStep.Draw,
+    players,
+    currentPlayerIndex: 0,
+    drawPile: [],
+    discardPile: [],
+    tableMelds: [],
+    round: 0,
+    turnCount: 0,
+    winnerId: null,
+    lastAction: null,
+  };
+
+  return state;
+}
+
+/** Start a new round (deal cards, etc.) */
+export function startRound(state: GameState, seed?: number): GameState {
+  const deck = shuffle(createDeck(state.config.numJokers), seed);
+  const [hands, remaining] = deal(deck, state.players.length, state.config.cardsPerPlayer);
+
+  // First player gets 1 extra card (15 instead of 14) — Rami Tunisien rule
+  // They start at Play step and must discard first (no draw needed)
+  const firstPlayerExtraCard = remaining.length > 0 ? remaining[0] : null;
+  const drawPile = remaining.slice(1);
+
+  const players = state.players.map((p, i) => ({
+    ...p,
+    hand: i === 0 && firstPlayerExtraCard
+      ? [...hands[i], firstPlayerExtraCard]
+      : hands[i],
+    melds: [],
+    hasOpened: false,
+    score: 0,
+  }));
+
+  return {
+    ...state,
+    phase: GamePhase.PlayerTurn,
+    turnStep: TurnStep.Play, // First player already has 15 cards → must play/discard
+    players,
+    drawPile,
+    discardPile: [], // No initial discard — first player's discard creates it
+    tableMelds: [],
+    round: state.round + 1,
+    turnCount: 0,
+    currentPlayerIndex: 0,
+    lastAction: null,
+  };
+}
+
+/** Apply a game action and return the new state */
+export function applyAction(state: GameState, action: GameAction): GameState {
+  if (state.phase === GamePhase.GameEnd) {
+    throw new GameError('GAME_ENDED', 'Game has already ended');
+  }
+  if (state.phase !== GamePhase.PlayerTurn) {
+    throw new GameError('WRONG_PHASE', 'Game is not in play phase');
+  }
+
+  let newState: GameState;
+
+  switch (action.type) {
+    case 'draw_from_deck':
+      newState = drawFromDeck(state, action.playerId);
+      break;
+
+    case 'draw_from_discard':
+      newState = drawFromDiscard(state, action.playerId);
+      break;
+
+    case 'meld':
+      newState = meld(state, action.playerId, action.cardIds);
+      break;
+
+    case 'layoff':
+      newState = layoff(state, action.playerId, action.cardId, action.targetMeldId, action.position);
+      break;
+
+    case 'replace_joker':
+      newState = replaceJoker(state, action.playerId, action.cardId, action.targetMeldId, action.jokerCardId);
+      break;
+
+    case 'discard':
+      newState = discard(state, action.playerId, action.cardId);
+      // After discard, check if round ends and advance turn
+      newState = afterDiscard(newState, action.playerId);
+      break;
+
+    default:
+      throw new GameError('UNKNOWN_ACTION', `Unknown action type: ${(action as any).type}`);
+  }
+
+  return newState;
+}
+
+/** Handle post-discard logic: check round end, advance turn */
+function afterDiscard(state: GameState, playerId: string): GameState {
+  const player = state.players.find(p => p.id === playerId)!;
+
+  // Check if player has emptied their hand (round win)
+  if (player.hand.length === 0) {
+    return endRound(state, playerId);
+  }
+
+  // Advance to next player
+  return advanceTurn(state);
+}
+
+/** End the current round, calculate scores */
+function endRound(state: GameState, roundWinnerId: string): GameState {
+  const roundScores = calculateRoundScores(state);
+
+  const players = state.players.map(p => ({
+    ...p,
+    score: roundScores[p.id],
+    totalScore: p.totalScore + roundScores[p.id],
+  }));
+
+  let newState: GameState = {
+    ...state,
+    players,
+    phase: GamePhase.RoundEnd,
+    winnerId: roundWinnerId,
+  };
+
+  // Check game end
+  const endCheck = checkGameEnd(newState);
+  if (endCheck.isEnd) {
+    return {
+      ...newState,
+      phase: GamePhase.GameEnd,
+      winnerId: endCheck.winnerId,
+    };
+  }
+
+  return newState;
+}
+
+/** Advance to the next player's turn */
+function advanceTurn(state: GameState): GameState {
+  let nextIdx = (state.currentPlayerIndex + 1) % state.players.length;
+
+  // Skip eliminated players (in elimination mode)
+  if (state.config.scoringMode === 'elimination') {
+    let attempts = 0;
+    while (
+      state.players[nextIdx].totalScore >= state.config.eliminationThreshold &&
+      attempts < state.players.length
+    ) {
+      nextIdx = (nextIdx + 1) % state.players.length;
+      attempts++;
+    }
+  }
+
+  return {
+    ...state,
+    currentPlayerIndex: nextIdx,
+    turnStep: TurnStep.Draw,
+    turnCount: state.turnCount + 1,
+  };
+}
+
+/** Get valid actions for the current player */
+export function getValidActions(state: GameState): GameAction['type'][] {
+  if (state.phase !== GamePhase.PlayerTurn) return [];
+
+  const actions: GameAction['type'][] = [];
+
+  if (state.turnStep === TurnStep.Draw) {
+    if (state.drawPile.length > 0 || state.discardPile.length > 1) {
+      actions.push('draw_from_deck');
+    }
+    if (state.discardPile.length > 0) {
+      actions.push('draw_from_discard');
+    }
+  }
+
+  if (state.turnStep === TurnStep.Play) {
+    actions.push('meld', 'layoff', 'discard');
+    if (!state.config.jokerLocked) {
+      actions.push('replace_joker');
+    }
+  }
+
+  return actions;
+}
+
+/** Sanitize state for a specific player (hide other hands) */
+export function sanitizeStateForPlayer(
+  state: GameState,
+  playerId: string,
+): import('../types/events').SanitizedGameState {
+  const myPlayer = state.players.find(p => p.id === playerId);
+
+  return {
+    id: state.id,
+    phase: state.phase,
+    turnStep: state.turnStep,
+    currentPlayerIndex: state.currentPlayerIndex,
+    players: state.players.map(p => ({
+      id: p.id,
+      name: p.name,
+      handCount: p.hand.length,
+      melds: p.melds,
+      totalScore: p.totalScore,
+      hasOpened: p.hasOpened,
+      isBot: p.isBot,
+      isConnected: p.isConnected,
+    })),
+    myHand: myPlayer?.hand ?? [],
+    drawPileCount: state.drawPile.length,
+    discardPile: state.discardPile,
+    tableMelds: state.tableMelds,
+    round: state.round,
+    turnCount: state.turnCount,
+    config: state.config,
+  };
+}
+
+

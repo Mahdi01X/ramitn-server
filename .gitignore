@@ -14,8 +14,34 @@ mobile/.flutter-plugins-dependencies
 mobile/ios/Pods/
 mobile/ios/.symlinks/
 mobile/android/.gradle/
+mobile/android/app/build/
+mobile/android/build/
+mobile/.packages
+mobile/pubspec.lock
+
+# Flutter tmp
+mobile_tmp/.dart_tool/
+mobile_tmp/build/
+mobile_tmp/.flutter-plugins
+mobile_tmp/.flutter-plugins-dependencies
+
+# Secrets / signing
+**/*.jks
+**/*.keystore
+**/key.properties
+**/local.properties
 
 # IDE
 .idea/
 .vscode/
 *.iml
+
+# Server
+simple-server/node_modules/
+server/node_modules/
+server/dist/
+shared/node_modules/
+shared/dist/
+package-lock.json
+**/package-lock.json
+

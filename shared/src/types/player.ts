@@ -1,0 +1,16 @@
+import { Card } from './card';
+import { Meld } from './meld';
+
+export interface Player {
+  id: string;
+  name: string;
+  hand: Card[];
+  melds: Meld[];
+  score: number;
+  /** Cumulative score across all rounds */
+  totalScore: number;
+  hasOpened: boolean;
+  isBot: boolean;
+  isConnected: boolean;
+}
+
