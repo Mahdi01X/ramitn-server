@@ -1,14 +1,15 @@
 workflows:
   ios-workflow:
     name: iOS Build
+    working_directory: mobile
+
     environment:
       flutter: stable
       xcode: latest
 
     scripts:
-      - cd mobile
       - flutter pub get
       - flutter build ipa --release
 
     artifacts:
-      - mobile/build/ios/ipa/*.ipa
+      - build/ios/ipa/*.ipa
