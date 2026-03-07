@@ -2,6 +2,7 @@ workflows:
   ios-workflow:
     name: iOS Build
     working_directory: mobile
+
     integrations:
       app_store_connect: Codemagic
 
@@ -32,3 +33,8 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
