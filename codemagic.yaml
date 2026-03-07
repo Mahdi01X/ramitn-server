@@ -2,14 +2,33 @@ workflows:
   ios-workflow:
     name: iOS Build
     working_directory: mobile
+    integrations:
+      app_store_connect: Codemagic
 
     environment:
       flutter: stable
       xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.ramitunisien.ramiTunisien
 
     scripts:
-      - flutter pub get
-      - flutter build ipa --release
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+
+      - name: Install pods
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+
+      - name: Build IPA
+        script: |
+          flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
       - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
