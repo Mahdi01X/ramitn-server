@@ -91,6 +91,7 @@ class LobbyScreen extends ConsumerWidget {
                     itemCount: room.players.length,
                     itemBuilder: (_, i) {
                       final p = room.players[i];
+                      final isHost = i == 0;
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: GlassCard(
@@ -103,20 +104,27 @@ class LobbyScreen extends ConsumerWidget {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: p.ready ? const Color(0xFF4CAF50).withOpacity(0.2) : CafeTunisienColors.gold.withOpacity(0.15),
+                                  border: isHost ? Border.all(color: CafeTunisienColors.amber.withOpacity(0.6), width: 1.5) : null,
                                 ),
-                                child: Icon(p.ready ? Icons.check : Icons.person, color: p.ready ? const Color(0xFF4CAF50) : CafeTunisienColors.goldLight, size: 18),
+                                child: Icon(
+                                  isHost ? Icons.star_rounded : (p.ready ? Icons.check : Icons.person),
+                                  color: isHost ? CafeTunisienColors.amber : (p.ready ? const Color(0xFF4CAF50) : CafeTunisienColors.goldLight),
+                                  size: 18,
+                                ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(child: Text(p.name, style: AppTextStyles.bodyLarge)),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: (p.ready ? const Color(0xFF4CAF50) : Colors.white10).withOpacity(0.2),
+                                  color: (isHost ? CafeTunisienColors.amber : p.ready ? const Color(0xFF4CAF50) : Colors.white10).withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  p.ready ? 'Prêt ✓' : 'En attente',
-                                  style: AppTextStyles.bodySmall.copyWith(color: p.ready ? const Color(0xFF4CAF50) : Colors.white38),
+                                  isHost ? 'Hôte' : (p.ready ? 'Prêt ✓' : 'En attente'),
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: isHost ? CafeTunisienColors.amber : (p.ready ? const Color(0xFF4CAF50) : Colors.white38),
+                                  ),
                                 ),
                               ),
                             ],
@@ -133,29 +141,41 @@ class LobbyScreen extends ConsumerWidget {
                     child: Text(room.error!, style: AppTextStyles.bodySmall.copyWith(color: CafeTunisienColors.warmRed)),
                   ),
 
-                // Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: PremiumButton(
-                        label: 'Prêt !',
-                        icon: Icons.thumb_up,
-                        isSecondary: true,
-                        onTap: () => ref.read(gameProvider.notifier).setReady(),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: PremiumButton(
-                        label: 'Démarrer',
-                        icon: Icons.play_arrow_rounded,
-                        onTap: room.players.every((p) => p.ready) && room.players.length >= 2
-                            ? () => ref.read(gameProvider.notifier).startOnlineGame()
-                            : null,
-                      ),
-                    ),
-                  ],
-                ),
+                // Buttons — role-based
+                Builder(builder: (context) {
+                  final socket = ref.read(socketServiceProvider);
+                  final myId = socket.playerId;
+                  final isHost = room.players.isNotEmpty && room.players.first.id == myId;
+                  final myPlayer = room.players.where((p) => p.id == myId).firstOrNull;
+                  final iAmReady = myPlayer?.ready ?? false;
+                  final allReady = room.players.every((p) => p.ready);
+                  final canStart = isHost && room.players.length >= 2 && allReady;
+
+                  if (isHost) {
+                    // Host: only show Start button
+                    return PremiumButton(
+                      label: canStart ? '🎮 Lancer la partie' : 'En attente des joueurs...',
+                      icon: Icons.play_arrow_rounded,
+                      onTap: canStart ? () => ref.read(gameProvider.notifier).startOnlineGame() : null,
+                    );
+                  } else {
+                    // Non-host: only show Ready button
+                    return Column(
+                      children: [
+                        PremiumButton(
+                          label: iAmReady ? 'Prêt ✓' : 'Prêt !',
+                          icon: iAmReady ? Icons.check_circle : Icons.thumb_up,
+                          isSecondary: iAmReady,
+                          onTap: iAmReady ? null : () => ref.read(gameProvider.notifier).setReady(),
+                        ),
+                        if (iAmReady) ...[
+                          const SizedBox(height: 8),
+                          Text('En attente du lancement par l\'hôte...', style: AppTextStyles.bodySmall.copyWith(color: Colors.white30)),
+                        ],
+                      ],
+                    );
+                  }
+                }),
               ],
             ),
           ),

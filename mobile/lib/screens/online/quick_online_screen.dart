@@ -77,33 +77,40 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
       body: CafeBackground(
         overlayOpacity: 0.78,
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Column(
-              children: [
-                // Header
-                _buildHeader(),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight - 32),
+                  child: Column(
+                    children: [
+                      // Header
+                      _buildHeader(),
 
-                // Error banners
-                if (_connectionError != null) _ErrorBanner(text: _connectionError!),
-                if (room.error != null && _step == _Step.waitingRoom) _ErrorBanner(text: room.error!),
+                      // Error banners
+                      if (_connectionError != null) _ErrorBanner(text: _connectionError!),
+                      if (room.error != null && _step == _Step.waitingRoom) _ErrorBanner(text: room.error!),
 
-                // Loading
-                if (_connecting) ...[
-                  const SizedBox(height: 80),
-                  const CircularProgressIndicator(color: CafeTunisienColors.gold, strokeWidth: 2.5),
-                  const SizedBox(height: 16),
-                  Text('Connexion au serveur...', style: AppTextStyles.bodySmall),
-                ],
+                      // Loading
+                      if (_connecting) ...[
+                        const SizedBox(height: 80),
+                        const CircularProgressIndicator(color: CafeTunisienColors.gold, strokeWidth: 2.5),
+                        const SizedBox(height: 16),
+                        Text('Connexion au serveur...', style: AppTextStyles.bodySmall),
+                      ],
 
-                // Steps
-                if (!_connecting && _step == _Step.pseudo) _buildPseudoStep(),
-                if (!_connecting && _step == _Step.choice) _buildChoiceStep(),
-                if (!_connecting && _step == _Step.creating) _buildCreatingStep(),
-                if (!_connecting && _step == _Step.joining) _buildJoiningStep(room),
-                if (!_connecting && _step == _Step.waitingRoom) _buildWaitingRoom(room),
-              ],
-            ),
+                      // Steps
+                      if (!_connecting && _step == _Step.pseudo) _buildPseudoStep(),
+                      if (!_connecting && _step == _Step.choice) _buildChoiceStep(),
+                      if (!_connecting && _step == _Step.creating) _buildCreatingStep(),
+                      if (!_connecting && _step == _Step.joining) _buildJoiningStep(room),
+                      if (!_connecting && _step == _Step.waitingRoom) _buildWaitingRoom(room),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -443,23 +450,37 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
 
           return Column(
             children: [
-              PremiumButton(
-                label: iAmReady ? 'Prêt ✓' : 'Je suis prêt !',
-                icon: iAmReady ? Icons.check_circle : Icons.thumb_up,
-                isSecondary: iAmReady,
-                onTap: () => ref.read(gameProvider.notifier).setReady(),
-              ),
-              if (isHost) ...[
-                const SizedBox(height: 12),
+              // Non-host: show ready button
+              if (!isHost)
                 PremiumButton(
-                  label: canStart ? '🎮 Lancer la partie !' : 'En attente...',
+                  label: iAmReady ? 'Prêt ✓' : 'Je suis prêt !',
+                  icon: iAmReady ? Icons.check_circle : Icons.thumb_up,
+                  isSecondary: iAmReady,
+                  onTap: iAmReady ? null : () => ref.read(gameProvider.notifier).setReady(),
+                ),
+
+              // Host: show start button
+              if (isHost) ...[
+                PremiumButton(
+                  label: canStart ? '🎮 Lancer la partie !' : 'En attente des joueurs...',
                   icon: Icons.play_arrow_rounded,
                   onTap: canStart ? () => ref.read(gameProvider.notifier).startOnlineGame() : null,
                 ),
               ],
-              if (!isHost) ...[
+
+              // Info text
+              if (!isHost && iAmReady) ...[
                 const SizedBox(height: 12),
-                Text('L\'hôte lancera la partie', style: AppTextStyles.bodySmall.copyWith(color: Colors.white30)),
+                Text('En attente du lancement par l\'hôte...', style: AppTextStyles.bodySmall.copyWith(color: Colors.white30)),
+              ],
+              if (isHost && !canStart) ...[
+                const SizedBox(height: 8),
+                Text(
+                  room.players.length < room.numPlayers
+                      ? 'En attente de joueurs...'
+                      : 'Tous les joueurs doivent être prêts',
+                  style: AppTextStyles.bodySmall.copyWith(color: Colors.white30),
+                ),
               ],
             ],
           );
