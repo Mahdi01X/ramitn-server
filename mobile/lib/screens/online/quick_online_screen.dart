@@ -74,45 +74,49 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
     });
 
     return Scaffold(
-      body: CafeBackground(
-        overlayOpacity: 0.78,
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight - 32),
-                  child: Column(
-                    children: [
-                      // Header
-                      _buildHeader(),
-
-                      // Error banners
-                      if (_connectionError != null) _ErrorBanner(text: _connectionError!),
-                      if (room.error != null && _step == _Step.waitingRoom) _ErrorBanner(text: room.error!),
-
-                      // Loading
-                      if (_connecting) ...[
-                        const SizedBox(height: 80),
-                        const CircularProgressIndicator(color: CafeTunisienColors.gold, strokeWidth: 2.5),
-                        const SizedBox(height: 16),
-                        Text('Connexion au serveur...', style: AppTextStyles.bodySmall),
-                      ],
-
-                      // Steps
-                      if (!_connecting && _step == _Step.pseudo) _buildPseudoStep(),
-                      if (!_connecting && _step == _Step.choice) _buildChoiceStep(),
-                      if (!_connecting && _step == _Step.creating) _buildCreatingStep(),
-                      if (!_connecting && _step == _Step.joining) _buildJoiningStep(room),
-                      if (!_connecting && _step == _Step.waitingRoom) _buildWaitingRoom(room),
-                    ],
-                  ),
-                ),
-              );
-            },
+      backgroundColor: const Color(0xFF0D0906),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Fixed background that covers EVERYTHING
+          CafeBackground(
+            overlayOpacity: 0.78,
+            child: const SizedBox.expand(),
           ),
-        ),
+          // Scrollable content on top
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  _buildHeader(),
+
+                  // Error banners
+                  if (_connectionError != null) _ErrorBanner(text: _connectionError!),
+                  if (room.error != null && _step == _Step.waitingRoom) _ErrorBanner(text: room.error!),
+
+                  // Loading
+                  if (_connecting) ...[
+                    const SizedBox(height: 80),
+                    const CircularProgressIndicator(color: CafeTunisienColors.gold, strokeWidth: 2.5),
+                    const SizedBox(height: 16),
+                    Text('Connexion au serveur...', style: AppTextStyles.bodySmall),
+                  ],
+
+                  // Steps
+                  if (!_connecting && _step == _Step.pseudo) _buildPseudoStep(),
+                  if (!_connecting && _step == _Step.choice) _buildChoiceStep(),
+                  if (!_connecting && _step == _Step.creating) _buildCreatingStep(),
+                  if (!_connecting && _step == _Step.joining) _buildJoiningStep(room),
+                  if (!_connecting && _step == _Step.waitingRoom) _buildWaitingRoom(room),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -281,7 +285,7 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
     );
   }
 
-  Widget _buildJoiningStep(room) {
+  Widget _buildJoiningStep(RoomState room) {
     return Column(
       children: [
         Container(
@@ -330,8 +334,9 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
     );
   }
 
-  Widget _buildWaitingRoom(room) {
+  Widget _buildWaitingRoom(RoomState room) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         const Text('📡', style: TextStyle(fontSize: 40)),
         const SizedBox(height: 12),
@@ -443,7 +448,8 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
           final socket = ref.read(socketServiceProvider);
           final myId = socket.playerId;
           final isHost = room.players.isNotEmpty && room.players.first.id == myId;
-          final myPlayer = room.players.where((p) => p.id == myId).firstOrNull;
+          final myPlayerMatches = room.players.where((p) => p.id == myId);
+          final myPlayer = myPlayerMatches.isNotEmpty ? myPlayerMatches.first : null;
           final iAmReady = myPlayer?.ready ?? false;
           final allReady = room.players.every((p) => p.ready);
           final canStart = isHost && room.players.length >= 2 && allReady;

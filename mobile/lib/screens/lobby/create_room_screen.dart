@@ -24,10 +24,16 @@ class _CreateRoomScreenState extends ConsumerState<CreateRoomScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: CafeBackground(
-        overlayOpacity: 0.78,
-        child: SafeArea(
-          child: Padding(
+      backgroundColor: const Color(0xFF0D0906),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          CafeBackground(
+            overlayOpacity: 0.78,
+            child: const SizedBox.expand(),
+          ),
+          SafeArea(
+            child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -91,6 +97,7 @@ class _CreateRoomScreenState extends ConsumerState<CreateRoomScreen> {
             ),
           ),
         ),
+        ],
       ),
     );
   }

@@ -46,7 +46,8 @@ class Card {
     Suit? suit;
     final suitStr = json['suit']?.toString();
     if (suitStr != null && suitStr != 'joker') {
-      suit = Suit.values.where((s) => s.name == suitStr).firstOrNull;
+      final suitMatches = Suit.values.where((s) => s.name == suitStr);
+      suit = suitMatches.isNotEmpty ? suitMatches.first : null;
     }
 
     // Handle rank — server sends string ('A','2','J','JOKER'), local engine sends int
@@ -54,7 +55,8 @@ class Card {
     final rawRank = json['rank'];
     if (rawRank != null) {
       if (rawRank is int) {
-        rank = Rank.values.where((r) => r.value == rawRank).firstOrNull;
+        final rankMatches = Rank.values.where((r) => r.value == rawRank);
+        rank = rankMatches.isNotEmpty ? rankMatches.first : null;
       } else if (rawRank is String && rawRank != 'JOKER') {
         const rankMap = {
           'A': Rank.ace, '2': Rank.two, '3': Rank.three, '4': Rank.four,

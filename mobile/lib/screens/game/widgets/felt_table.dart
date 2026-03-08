@@ -500,7 +500,8 @@ class _MeldsZone extends StatelessWidget {
   }
 
   Widget _buildPlayerMeldsSection(String playerId, List<Meld> playerMelds, bool isMe) {
-    final info = playerInfos.where((p) => p.id == playerId).firstOrNull;
+    final infoMatches = playerInfos.where((p) => p.id == playerId);
+    final info = infoMatches.isNotEmpty ? infoMatches.first : null;
     final name = isMe ? 'Mes paquets' : (info?.name ?? 'Joueur');
     final openScore = info?.openingScore ?? 0;
     final opened = info?.hasOpened ?? false;

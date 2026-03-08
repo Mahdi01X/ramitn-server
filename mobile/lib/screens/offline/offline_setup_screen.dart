@@ -34,10 +34,16 @@ class _OfflineSetupScreenState extends ConsumerState<OfflineSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: CafeBackground(
-        overlayOpacity: 0.78,
-        child: SafeArea(
-          child: Column(
+      backgroundColor: const Color(0xFF0D0906),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          CafeBackground(
+            overlayOpacity: 0.78,
+            child: const SizedBox.expand(),
+          ),
+          SafeArea(
+            child: Column(
             children: [
               // ─── Header ──────────────────────────────
               Padding(
@@ -230,6 +236,7 @@ class _OfflineSetupScreenState extends ConsumerState<OfflineSetupScreen> {
             ],
           ),
         ),
+        ],
       ),
     );
   }

@@ -35,11 +35,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     return Scaffold(
-      body: CafeBackground(
-        overlayOpacity: 0.78,
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+      backgroundColor: const Color(0xFF0D0906),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          CafeBackground(
+            overlayOpacity: 0.78,
+            child: const SizedBox.expand(),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -163,6 +170,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
+        ],
       ),
     );
   }

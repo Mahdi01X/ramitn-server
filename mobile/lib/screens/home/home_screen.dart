@@ -16,71 +16,79 @@ class HomeScreen extends ConsumerWidget {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      body: CafeBackground(
-        overlayOpacity: 0.65,
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 8),
+      backgroundColor: const Color(0xFF0D0906),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          CafeBackground(
+            overlayOpacity: 0.65,
+            child: const SizedBox.expand(),
+          ),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 8),
 
-                  // ─── Logo + Title ────────────────────────
-                  _LogoSection(),
-                  const SizedBox(height: 40),
+                    // ─── Logo + Title ────────────────────────
+                    _LogoSection(),
+                    const SizedBox(height: 40),
 
-                  // ─── Ornament ────────────────────────────
-                  const SuitOrnament(size: 18, opacity: 0.4),
-                  const SizedBox(height: 32),
+                    // ─── Ornament ────────────────────────────
+                    const SuitOrnament(size: 18, opacity: 0.4),
+                    const SizedBox(height: 32),
 
-                  // ─── Menu Buttons ────────────────────────
-                  _PremiumMenuCard(
-                    icon: Icons.casino_rounded,
-                    emoji: '🎲',
-                    label: 'Jouer Hors-ligne',
-                    subtitle: 'Hot-seat ou contre des bots',
-                    gradient: const [Color(0xFF1B5E20), Color(0xFF2E7D32)],
-                    onTap: () => context.push('/offline-setup'),
-                  ),
-                  const SizedBox(height: 14),
-                  _PremiumMenuCard(
-                    icon: Icons.public_rounded,
-                    emoji: '🌐',
-                    label: 'Jouer En ligne',
-                    subtitle: 'Parties privées entre amis',
-                    gradient: const [Color(0xFF0D47A1), Color(0xFF1565C0)],
-                    onTap: () => context.push('/quick-online'),
-                  ),
-                  const SizedBox(height: 14),
-                  _PremiumMenuCard(
-                    icon: Icons.auto_stories_rounded,
-                    emoji: '📖',
-                    label: 'Règles du jeu',
-                    subtitle: 'Apprendre à jouer au Rami Tunisien',
-                    gradient: const [Color(0xFF4E342E), Color(0xFF6D4C41)],
-                    onTap: () => context.push('/rules'),
-                  ),
-
-                  const SizedBox(height: 40),
-
-                  // ─── Bottom ornament ─────────────────────
-                  const GoldDivider(width: 80),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Le jeu de cartes du café tunisien',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: Colors.white.withOpacity(0.35),
-                      letterSpacing: 0.5,
+                    // ─── Menu Buttons ────────────────────────
+                    _PremiumMenuCard(
+                      icon: Icons.casino_rounded,
+                      emoji: '🎲',
+                      label: 'Jouer Hors-ligne',
+                      subtitle: 'Hot-seat ou contre des bots',
+                      gradient: const [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+                      onTap: () => context.push('/offline-setup'),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+                    const SizedBox(height: 14),
+                    _PremiumMenuCard(
+                      icon: Icons.public_rounded,
+                      emoji: '🌐',
+                      label: 'Jouer En ligne',
+                      subtitle: 'Parties privées entre amis',
+                      gradient: const [Color(0xFF0D47A1), Color(0xFF1565C0)],
+                      onTap: () => context.push('/quick-online'),
+                    ),
+                    const SizedBox(height: 14),
+                    _PremiumMenuCard(
+                      icon: Icons.auto_stories_rounded,
+                      emoji: '📖',
+                      label: 'Règles du jeu',
+                      subtitle: 'Apprendre à jouer au Rami Tunisien',
+                      gradient: const [Color(0xFF4E342E), Color(0xFF6D4C41)],
+                      onTap: () => context.push('/rules'),
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    // ─── Bottom ornament ─────────────────────
+                    const GoldDivider(width: 80),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Le jeu de cartes du café tunisien',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: Colors.white.withOpacity(0.35),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

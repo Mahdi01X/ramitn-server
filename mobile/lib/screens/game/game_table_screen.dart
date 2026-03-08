@@ -145,7 +145,8 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
       tableMelds = onlineState.tableMelds;
       config = onlineState.config;
       // Find my player info for hasOpened
-      final myInfo = onlineState.players.where((p) => p.id == gs.myPlayerId).firstOrNull;
+      final myInfoMatches = onlineState.players.where((p) => p.id == gs.myPlayerId);
+      final myInfo = myInfoMatches.isNotEmpty ? myInfoMatches.first : null;
       hasOpened = myInfo?.hasOpened ?? false;
       turnStep = onlineState.turnStep;
     }
@@ -271,7 +272,9 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
                 currentPlayerId: playerId,
                 playerInfos: playerInfosForTable,
                 selectedCard: gs.selectedCardIds.length == 1 && hasOpened
-                    ? visibleHand.where((c) => c.id == gs.selectedCardIds.first).firstOrNull
+                    ? (visibleHand.where((c) => c.id == gs.selectedCardIds.first).isNotEmpty
+                        ? visibleHand.where((c) => c.id == gs.selectedCardIds.first).first
+                        : null)
                     : null,
                 onDrawDeck: isMyTurn && turnStep == 'draw'
                     ? () { HapticFeedback.lightImpact(); isOffline ? notifier.offlineDrawFromDeck() : notifier.onlineAction({'type': 'draw_deck'}); }
@@ -1225,7 +1228,8 @@ class _FrichVoteScreen extends StatelessWidget {
     final engine = gameState.offlineEngine;
     final votes = engine?.state.frichVotes ?? {};
     final players = engine?.state.players ?? [];
-    final humanPlayer = players.where((p) => !p.isBot).firstOrNull;
+    final humanPlayerMatches = players.where((p) => !p.isBot);
+    final humanPlayer = humanPlayerMatches.isNotEmpty ? humanPlayerMatches.first : null;
     final myHand = humanPlayer?.hand ?? [];
     final alreadyVoted = humanPlayer != null && votes.containsKey(humanPlayer.id);
 

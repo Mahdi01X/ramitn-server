@@ -8,10 +8,16 @@ class RulesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: CafeBackground(
-        overlayOpacity: 0.82,
-        child: SafeArea(
-          child: Column(
+      backgroundColor: const Color(0xFF0D0906),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          CafeBackground(
+            overlayOpacity: 0.82,
+            child: const SizedBox.expand(),
+          ),
+          SafeArea(
+            child: Column(
             children: [
               // Header
               Padding(
@@ -116,6 +122,7 @@ class RulesScreen extends StatelessWidget {
             ],
           ),
         ),
+        ],
       ),
     );
   }
