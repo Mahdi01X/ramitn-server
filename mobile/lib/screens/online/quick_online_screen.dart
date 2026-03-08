@@ -309,6 +309,7 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
             textAlign: TextAlign.center,
             textCapitalization: TextCapitalization.characters,
             maxLength: 6,
+            onChanged: (_) => setState(() {}),
             style: AppTextStyles.displayMedium.copyWith(fontSize: 34, letterSpacing: 10, fontFamily: 'monospace', color: CafeTunisienColors.goldLight),
             decoration: InputDecoration(
               border: InputBorder.none, counterText: '',
@@ -322,9 +323,12 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
         PremiumButton(
           label: 'Rejoindre',
           icon: Icons.login_rounded,
-          onTap: _codeCtrl.text.trim().length >= 4 ? () => _connectAndDo(() {
-            ref.read(gameProvider.notifier).joinRoom(_codeCtrl.text.trim().toUpperCase());
-          }) : null,
+          onTap: _codeCtrl.text.trim().length >= 4 ? () {
+            final code = _codeCtrl.text.trim().toUpperCase();
+            _connectAndDo(() {
+              ref.read(gameProvider.notifier).joinRoom(code);
+            });
+          } : null,
         ),
         if (room.error != null) ...[
           const SizedBox(height: 16),

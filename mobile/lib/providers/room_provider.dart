@@ -82,9 +82,9 @@ class RoomNotifier extends StateNotifier<RoomState> {
 
   void _listen() {
     _subs.add(_socket.on('room_created').listen((data) {
-      final players = (data['players'] as List?)
-          ?.map((p) => RoomPlayerInfo(id: p['id'], name: p['name'], ready: p['ready'] ?? false))
-          .toList() ?? [];
+      final List<RoomPlayerInfo> players = (data['players'] as List?)
+          ?.map<RoomPlayerInfo>((p) => RoomPlayerInfo(id: p['id'], name: p['name'], ready: p['ready'] ?? false))
+          .toList() ?? <RoomPlayerInfo>[];
       state = state.copyWith(
         roomCode: data['roomCode'],
         roomId: data['roomId'],
@@ -96,8 +96,8 @@ class RoomNotifier extends StateNotifier<RoomState> {
     }));
 
     _subs.add(_socket.on('room_joined').listen((data) {
-      final players = (data['players'] as List)
-          .map((p) => RoomPlayerInfo(id: p['id'], name: p['name'], ready: p['ready'] ?? false))
+      final List<RoomPlayerInfo> players = (data['players'] as List)
+          .map<RoomPlayerInfo>((p) => RoomPlayerInfo(id: p['id'], name: p['name'], ready: p['ready'] ?? false))
           .toList();
       state = state.copyWith(
         roomCode: data['roomCode'],
@@ -111,8 +111,8 @@ class RoomNotifier extends StateNotifier<RoomState> {
     _subs.add(_socket.on('player_joined').listen((data) {
       // Server sends full players list — use it if available
       if (data['players'] != null) {
-        final players = (data['players'] as List)
-            .map((p) => RoomPlayerInfo(id: p['id'], name: p['name'], ready: p['ready'] ?? false))
+        final List<RoomPlayerInfo> players = (data['players'] as List)
+            .map<RoomPlayerInfo>((p) => RoomPlayerInfo(id: p['id'], name: p['name'], ready: p['ready'] ?? false))
             .toList();
         state = state.copyWith(players: players);
       } else {
@@ -129,8 +129,8 @@ class RoomNotifier extends StateNotifier<RoomState> {
 
     _subs.add(_socket.on('player_left').listen((data) {
       if (data['players'] != null) {
-        final players = (data['players'] as List)
-            .map((p) => RoomPlayerInfo(id: p['id'], name: p['name'], ready: p['ready'] ?? false))
+        final List<RoomPlayerInfo> players = (data['players'] as List)
+            .map<RoomPlayerInfo>((p) => RoomPlayerInfo(id: p['id'], name: p['name'], ready: p['ready'] ?? false))
             .toList();
         state = state.copyWith(players: players);
       } else {
@@ -141,8 +141,8 @@ class RoomNotifier extends StateNotifier<RoomState> {
 
     _subs.add(_socket.on('player_ready').listen((data) {
       if (data['players'] != null) {
-        final players = (data['players'] as List)
-            .map((p) => RoomPlayerInfo(id: p['id'], name: p['name'], ready: p['ready'] ?? false))
+        final List<RoomPlayerInfo> players = (data['players'] as List)
+            .map<RoomPlayerInfo>((p) => RoomPlayerInfo(id: p['id'], name: p['name'], ready: p['ready'] ?? false))
             .toList();
         state = state.copyWith(players: players);
       } else {
