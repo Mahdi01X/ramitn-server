@@ -12,7 +12,8 @@ import '../../models/game_config.dart';
 import '../../core/theme.dart';
 import '../../services/music_service.dart';
 import 'widgets/playing_card.dart';
-import 'widgets/player_hand.dart';
+import 'widgets/fan_hand_widget.dart';
+import 'widgets/opponent_hand_widget.dart';
 import 'widgets/felt_table.dart';
 import 'widgets/game_action_bar.dart';
 import 'widgets/score_board_widget.dart';
@@ -198,13 +199,47 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
       }
     }
 
+    // Build opponent info
+    final opponents = <_PInfo>[];
+    if (isOffline && engine != null) {
+      for (final p in engine.state.players) {
+        if (p.id != playerId) {
+          opponents.add(_PInfo(p.name, p.hand.length,
+              p.id == engine.state.currentPlayer.id, p.totalScore, p.isBot,
+              hasOpened: p.hasOpened, openingScore: p.openingScore));
+        }
+      }
+    } else if (onlineState != null) {
+      for (int i = 0; i < onlineState.players.length; i++) {
+        final p = onlineState.players[i];
+        if (p.id != gs.myPlayerId) {
+          opponents.add(_PInfo(p.name, p.handCount,
+              i == onlineState.currentPlayerIndex, p.totalScore, p.isBot,
+              hasOpened: p.hasOpened, openingScore: p.openingScore));
+        }
+      }
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF0D3B13),
       body: SafeArea(
         child: Column(
           children: [
-            // Top bar + Players in one header
-            _CombinedHeader(
+            // ─── Opponent hand(s) at top ───
+            if (opponents.isNotEmpty)
+              OpponentHandWidget.multi(
+                opponents: opponents.map((o) => OpponentInfo(
+                  name: o.name,
+                  handCount: o.handCount,
+                  isActive: o.active,
+                  totalScore: o.score,
+                  hasOpened: o.hasOpened,
+                  openingScore: o.openingScore,
+                )).toList(),
+              ),
+
+            // ─── Compact header ───
+            _CompactHeader(
               playerName: playerName,
               isMyTurn: isMyTurn,
               turnStep: turnStep,
@@ -215,14 +250,10 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
               musicPlaying: _musicPlaying,
               onToggleMusic: () {
                 setState(() => _musicPlaying = !_musicPlaying);
-                if (_musicPlaying) {
-                  MusicService.instance.play();
-                } else {
-                  MusicService.instance.stop();
-                }
+                if (_musicPlaying) { MusicService.instance.play(); }
+                else { MusicService.instance.stop(); }
               },
               turnTimeoutSeconds: config.turnTimeoutSeconds,
-              gameState: gs,
             ),
 
             // Felt table
@@ -300,14 +331,33 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
             if (gs.error != null)
               Container(
                 width: double.infinity,
-                color: const Color(0xFFC0392B).withOpacity(0.9),
-                padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFC0392B).withOpacity(0.95),
+                      const Color(0xFF922B21).withOpacity(0.95),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(color: Colors.red.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, -2)),
+                  ],
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
                 child: Row(
                   children: [
-                    Expanded(child: Text(gs.error!, style: const TextStyle(color: Colors.white, fontSize: 12))),
+                    const Icon(Icons.error_outline_rounded, color: Colors.white70, size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(gs.error!, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500))),
                     GestureDetector(
                       onTap: () => notifier.clearSelection(),
-                      child: const Icon(Icons.close, color: Colors.white54, size: 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withOpacity(0.15),
+                        ),
+                        child: const Icon(Icons.close, color: Colors.white70, size: 14),
+                      ),
                     ),
                   ],
                 ),
@@ -317,15 +367,33 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
             if (drewFromDiscard && !hasOpened && isMyTurn && turnStep == 'play')
               Container(
                 width: double.infinity,
-                color: const Color(0xFFE65100).withOpacity(0.95),
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                child: const Row(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFE65100).withOpacity(0.95),
+                      const Color(0xFFBF360C).withOpacity(0.95),
+                    ],
+                  ),
+                  border: Border(
+                    top: BorderSide(color: const Color(0xFFFF8F00).withOpacity(0.6), width: 1),
+                    bottom: BorderSide(color: const Color(0xFFFF8F00).withOpacity(0.3), width: 1),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 12),
+                child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.white, size: 16),
-                    SizedBox(width: 6),
-                    Expanded(
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.15),
+                      ),
+                      child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 14),
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
                       child: Text(
-                        '⚠️ Vous avez pioché du talon ! Vous devez ouvrir ou recevoir 100 pts de pénalité.',
+                        'Vous avez pioché du talon ! Ouvrez ou recevez 100 pts de pénalité.',
                         style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -379,13 +447,31 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
                 onUnstageMeld: (id) => notifier.unstageMeld(id),
               ),
 
-            // Hand (only show cards NOT in staged melds)
-            PlayerHandWidget(
+            // Hand (fan layout — all cards visible)
+            FanHandWidget(
               cards: visibleHand,
               selectedIds: gs.selectedCardIds.toSet(),
               validHighlightIds: validHighlightIds,
               onTapCard: (id) => notifier.toggleCardSelection(id),
               onReorder: (from, to) => notifier.reorderCard(from, to),
+              onReorderGroup: (cardIds, insertIdx) => notifier.reorderGroup(cardIds, insertIdx),
+              onDragToDiscard: isMyTurn && turnStep == 'play' && gs.stagedMelds.isEmpty
+                  ? (cardId) {
+                      HapticFeedback.mediumImpact();
+                      if (isOffline) { notifier.offlineDiscard(cardId); }
+                      else { notifier.onlineAction({'type': 'discard', 'cardId': cardId}); }
+                      notifier.clearSelection();
+                    }
+                  : null,
+              onDropDrawnCard: isMyTurn && turnStep == 'draw'
+                  ? (insertIndex) {
+                      // Draw from deck — the card will be added and then we could reorder
+                      // For now just trigger the draw
+                      HapticFeedback.lightImpact();
+                      if (isOffline) { notifier.offlineDrawFromDeck(); }
+                      else { notifier.onlineAction({'type': 'draw_deck'}); }
+                    }
+                  : null,
             ),
           ],
         ),
@@ -397,13 +483,39 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
     showDialog(
       context: ctx,
       builder: (_) => AlertDialog(
-        title: const Text('Quitter la partie ?'),
-        content: const Text('Ta progression sera perdue.'),
+        backgroundColor: const Color(0xFF2D1B0E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.red.withOpacity(0.15),
+              ),
+              child: const Icon(Icons.exit_to_app_rounded, color: Colors.redAccent, size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Text('Quitter la partie ?', style: TextStyle(color: Color(0xFFFFD700), fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'Ta progression sera perdue. Es-tu sûr de vouloir quitter ?',
+          style: TextStyle(color: Colors.white60, fontSize: 14, height: 1.4),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rester')),
           TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Rester', style: TextStyle(color: CafeTunisienColors.goldLight, fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
             onPressed: () { Navigator.pop(ctx); ref.read(gameProvider.notifier).disconnectOnline(); GoRouter.of(ctx).go('/'); },
-            child: const Text('Quitter', style: TextStyle(color: Colors.red)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade800,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Quitter'),
           ),
         ],
       ),
@@ -468,13 +580,20 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
   }
 
   void _showScoreBoard(BuildContext ctx, GameProviderState gs) {
-    showModalBottomSheet(context: ctx, builder: (_) => ScoreBoardWidget(gameState: gs));
+    showModalBottomSheet(
+      context: ctx,
+      backgroundColor: const Color(0xFF1A0E06),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => ScoreBoardWidget(gameState: gs),
+    );
   }
 }
 
-// ─── Top Bar ─────────────────────────────────────────────────
+// ─── Compact Header ─────────────────────────────────────────
 
-class _CombinedHeader extends StatelessWidget {
+class _CompactHeader extends StatelessWidget {
   final String playerName;
   final bool isMyTurn;
   final String turnStep;
@@ -485,111 +604,157 @@ class _CombinedHeader extends StatelessWidget {
   final bool musicPlaying;
   final VoidCallback onToggleMusic;
   final int turnTimeoutSeconds;
-  final GameProviderState gameState;
 
-  const _CombinedHeader({
+  const _CompactHeader({
     required this.playerName, required this.isMyTurn, required this.turnStep,
     required this.round, required this.maxRounds, required this.onBack, required this.onScore,
     required this.musicPlaying, required this.onToggleMusic,
     this.turnTimeoutSeconds = 60,
-    required this.gameState,
   });
 
   @override
   Widget build(BuildContext context) {
-    final statusText = isMyTurn
-        ? (turnStep == 'draw' ? '☝ Piochez !' : '🃏 Jouez !')
-        : '⏳ Tour de $playerName...';
-    final statusColor = isMyTurn ? const Color(0xFF4CAF50) : const Color(0xFFE8A317);
-
-    // Build player items
-    final items = <_PInfo>[];
-    final isOffline = gameState.mode == GameMode.offline;
-    if (isOffline && gameState.offlineEngine != null) {
-      final st = gameState.offlineEngine!.state;
-      for (int i = 0; i < st.players.length; i++) {
-        final p = st.players[i];
-        items.add(_PInfo(p.name, p.hand.length, i == st.currentPlayerIndex, p.totalScore, p.isBot,
-            hasOpened: p.hasOpened, openingScore: p.openingScore));
-      }
-    } else if (gameState.onlineState != null) {
-      for (int i = 0; i < gameState.onlineState!.players.length; i++) {
-        final p = gameState.onlineState!.players[i];
-        items.add(_PInfo(p.name, p.handCount, i == gameState.onlineState!.currentPlayerIndex, p.totalScore, p.isBot,
-            hasOpened: p.hasOpened, openingScore: p.openingScore));
-      }
-    }
+    final isDraw = turnStep == 'draw';
+    final statusColor = isMyTurn
+        ? (isDraw ? const Color(0xFFE8A317) : const Color(0xFF4CAF50))
+        : const Color(0xFF78909C);
 
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF5C3317).withOpacity(0.95),
-        border: const Border(bottom: BorderSide(color: Color(0xFFD4A017), width: 1)),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF4A2208),
+            const Color(0xFF3E1F00).withOpacity(0.97),
+            const Color(0xFF2C1508).withOpacity(0.9),
+          ],
+        ),
+        border: Border(
+          bottom: BorderSide(color: const Color(0xFFD4A017).withOpacity(0.5), width: 1.5),
+        ),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 3)),
+        ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          // Row 1: Turn status + controls
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: onBack,
-                  child: const Icon(Icons.arrow_back, color: Color(0xFFFFD700), size: 18),
+          // Back button
+          _HeaderIconBtn(
+            icon: Icons.arrow_back_ios_new_rounded,
+            onTap: onBack,
+            size: 14,
+          ),
+          const SizedBox(width: 4),
+
+          // Player name + turn status
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    statusColor.withOpacity(0.2),
+                    statusColor.withOpacity(0.08),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: statusColor.withOpacity(0.4), width: 1),
+              ),
+              child: Row(
+                children: [
+                  // Turn indicator dot
+                  Container(
+                    width: 8, height: 8,
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: statusColor.withOpacity(0.5), width: 1),
+                      shape: BoxShape.circle,
+                      color: statusColor,
+                      boxShadow: isMyTurn
+                          ? [BoxShadow(color: statusColor.withOpacity(0.6), blurRadius: 6)]
+                          : null,
                     ),
+                  ),
+                  const SizedBox(width: 6),
+                  // Status text
+                  Expanded(
                     child: Text(
-                      statusText,
-                      style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w700),
+                      isMyTurn
+                          ? (isDraw ? 'Piochez une carte' : 'Jouez vos cartes')
+                          : 'Tour de $playerName...',
+                      style: TextStyle(
+                        color: isMyTurn ? Colors.white : Colors.white60,
+                        fontSize: 11,
+                        fontWeight: isMyTurn ? FontWeight.w700 : FontWeight.w500,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                _TurnTimer(isMyTurn: isMyTurn, seconds: turnTimeoutSeconds),
-                if (round > 0) ...[
-                  const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8)),
-                    child: Text('$round/$maxRounds', style: const TextStyle(color: Colors.white60, fontSize: 9)),
-                  ),
                 ],
-                GestureDetector(
-                  onTap: onToggleMusic,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Icon(musicPlaying ? Icons.music_note : Icons.music_off, color: const Color(0xFFFFD700), size: 18),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: onScore,
-                  child: const Icon(Icons.scoreboard, color: Color(0xFFFFD700), size: 18),
-                ),
-              ],
+              ),
             ),
           ),
-          // Row 2: Player chips (compact)
-          SizedBox(
-            height: 38,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 4),
-              itemBuilder: (_, i) => _PlayerChip(info: items[i]),
+          const SizedBox(width: 4),
+
+          // Timer
+          _TurnTimer(isMyTurn: isMyTurn, seconds: turnTimeoutSeconds),
+
+          // Round badge
+          if (round > 0) ...[
+            const SizedBox(width: 3),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: CafeTunisienColors.gold.withOpacity(0.15)),
+              ),
+              child: Text(
+                '$round/$maxRounds',
+                style: TextStyle(color: CafeTunisienColors.gold.withOpacity(0.5), fontSize: 9, fontWeight: FontWeight.w600),
+              ),
             ),
+          ],
+
+          // Music toggle
+          _HeaderIconBtn(
+            icon: musicPlaying ? Icons.music_note_rounded : Icons.music_off_rounded,
+            onTap: onToggleMusic,
+            size: 15,
           ),
-          const SizedBox(height: 2),
+
+          // Score button
+          _HeaderIconBtn(
+            icon: Icons.leaderboard_rounded,
+            onTap: onScore,
+            size: 15,
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Small icon button for the header bar
+class _HeaderIconBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final double size;
+  const _HeaderIconBtn({required this.icon, required this.onTap, this.size = 16});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 30, height: 30,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.06),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Icon(icon, color: CafeTunisienColors.goldLight, size: size),
       ),
     );
   }
@@ -644,164 +809,40 @@ class _TurnTimerState extends State<_TurnTimer> {
   @override
   Widget build(BuildContext context) {
     final isLow = _remaining <= 10;
-    final color = isLow ? Colors.redAccent : Colors.white60;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    final isCritical = _remaining <= 5;
+    final color = isCritical ? Colors.red : isLow ? Colors.redAccent : Colors.white60;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: isLow ? Colors.red.withOpacity(0.2) : Colors.black26,
+        gradient: isLow
+            ? LinearGradient(
+                colors: [
+                  Colors.red.withOpacity(isCritical ? 0.4 : 0.2),
+                  Colors.red.withOpacity(isCritical ? 0.25 : 0.1),
+                ],
+              )
+            : null,
+        color: isLow ? null : Colors.black26,
         borderRadius: BorderRadius.circular(8),
-        border: isLow ? Border.all(color: Colors.redAccent.withOpacity(0.5)) : null,
+        border: isLow ? Border.all(color: Colors.redAccent.withOpacity(0.6)) : null,
+        boxShadow: isCritical
+            ? [BoxShadow(color: Colors.red.withOpacity(0.4), blurRadius: 8)]
+            : null,
       ),
       child: Text(
         '⏱ ${_remaining}s',
-        style: TextStyle(color: color, fontSize: 11, fontWeight: isLow ? FontWeight.bold : FontWeight.normal),
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: isLow ? FontWeight.bold : FontWeight.normal,
+        ),
       ),
     );
   }
 }
 
-// ─── Player Chip (reused in CombinedHeader) ──────────────────
-
-class _PlayerChip extends StatefulWidget {
-  final _PInfo info;
-  const _PlayerChip({required this.info});
-
-  @override
-  State<_PlayerChip> createState() => _PlayerChipState();
-}
-
-class _PlayerChipState extends State<_PlayerChip> with SingleTickerProviderStateMixin {
-  late AnimationController _pulseCtrl;
-  late Animation<double> _pulse;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
-    _pulse = Tween(begin: 0.6, end: 1.0).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
-    if (widget.info.active) _pulseCtrl.repeat(reverse: true);
-  }
-
-  @override
-  void didUpdateWidget(_PlayerChip old) {
-    super.didUpdateWidget(old);
-    if (widget.info.active && !_pulseCtrl.isAnimating) {
-      _pulseCtrl.repeat(reverse: true);
-    } else if (!widget.info.active && _pulseCtrl.isAnimating) {
-      _pulseCtrl.stop();
-      _pulseCtrl.value = 0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _pulseCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final p = widget.info;
-    return AnimatedBuilder(
-      animation: _pulse,
-      builder: (_, child) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: p.active
-                ? Color.lerp(const Color(0xFFD4A017), const Color(0xFFFFD700), _pulse.value)
-                : Colors.white10,
-            borderRadius: BorderRadius.circular(20),
-            border: p.active
-                ? Border.all(color: const Color(0xFFFFD700), width: 2)
-                : Border.all(color: Colors.white10, width: 0.5),
-            boxShadow: p.active
-                ? [BoxShadow(
-                    color: const Color(0xFFFFD700).withOpacity(_pulse.value * 0.5),
-                    blurRadius: 12,
-                    spreadRadius: 1,
-                  )]
-                : null,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Turn arrow indicator
-              if (p.active)
-                const Padding(
-                  padding: EdgeInsets.only(right: 4),
-                  child: Text('▶', style: TextStyle(fontSize: 10, color: Colors.white)),
-                ),
-              // Icon
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: p.active ? Colors.white.withOpacity(0.3) : Colors.white.withOpacity(0.08),
-                ),
-                child: Icon(
-                  p.isBot ? Icons.smart_toy : Icons.person,
-                  size: 14,
-                  color: p.active ? Colors.white : Colors.white54,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    p.name,
-                    style: TextStyle(
-                      color: p.active ? Colors.white : Colors.white70,
-                      fontWeight: p.active ? FontWeight.w700 : FontWeight.w500,
-                      fontSize: 12,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Text(
-                        '${p.handCount}🃏',
-                        style: TextStyle(
-                          color: p.active ? Colors.white70 : Colors.white38,
-                          fontSize: 9,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${p.score}pts',
-                        style: TextStyle(
-                          color: p.active ? Colors.white70 : Colors.white38,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (p.hasOpened) ...[
-                        const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF4CAF50).withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            '✓${p.openingScore}',
-                            style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 8, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
+// ─── Data class for player info ──────────────────────────────
 
 class _PInfo {
   final String name; final int handCount; final bool active; final int score; final bool isBot;
@@ -822,78 +863,132 @@ class _RoundEndScreen extends StatelessWidget {
     final engine = gameState.offlineEngine;
     final onlineResults = gameState.onlineRoundResults;
     return Scaffold(
-      backgroundColor: CafeTunisienColors.tableGreen,
+      backgroundColor: const Color(0xFF0A140B),
       body: SafeArea(
         child: Center(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('🏆', style: TextStyle(fontSize: 60)),
+                // Trophy with double glow
+                Container(
+                  width: 110, height: 110,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(colors: [
+                      CafeTunisienColors.gold.withOpacity(0.35),
+                      CafeTunisienColors.gold.withOpacity(0.08),
+                      Colors.transparent,
+                    ], stops: const [0.0, 0.5, 1.0]),
+                    boxShadow: [
+                      BoxShadow(color: CafeTunisienColors.gold.withOpacity(0.2), blurRadius: 30, spreadRadius: 5),
+                    ],
+                  ),
+                  child: const Center(child: Text('🏆', style: TextStyle(fontSize: 56))),
+                ),
                 const SizedBox(height: 16),
                 Text(
-                  isOffline
-                      ? 'Fin de manche ${engine?.state.round ?? 0}'
-                      : 'Fin de manche',
-                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  isOffline ? 'Fin de manche ${engine?.state.round ?? 0}' : 'Fin de manche',
+                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: 1),
                 ),
+                const SizedBox(height: 4),
+                Container(width: 60, height: 2, decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(1),
+                  gradient: LinearGradient(colors: [Colors.transparent, CafeTunisienColors.gold, Colors.transparent]),
+                )),
                 if (!isOffline && onlineResults != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      '${onlineResults['winnerName']} gagne la manche !',
-                      style: const TextStyle(color: CafeTunisienColors.goldLight, fontSize: 18),
-                    ),
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text('${onlineResults['winnerName']} gagne la manche !',
+                      style: const TextStyle(color: CafeTunisienColors.goldLight, fontSize: 18, fontWeight: FontWeight.w600)),
                   ),
                 const SizedBox(height: 24),
+                // Player scores
                 if (isOffline && engine != null)
-                  ...engine.state.players.map((p) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Card(child: ListTile(
-                      leading: CircleAvatar(backgroundColor: p.score == 0 ? Colors.green : Colors.orange, child: Text('${p.score}')),
-                      title: Text(p.name), subtitle: Text('Total: ${p.totalScore} pts'),
-                      trailing: p.score == 0 ? const Icon(Icons.star, color: Colors.amber) : null,
-                    )),
+                  ...engine.state.players.map((p) => Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: p.score == 0 ? const Color(0xFF1B5E20).withOpacity(0.3) : Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: p.score == 0 ? const Color(0xFF4CAF50).withOpacity(0.4) : Colors.white.withOpacity(0.08)),
+                    ),
+                    child: Row(children: [
+                      Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: p.score == 0 ? const Color(0xFF4CAF50).withOpacity(0.2) : CafeTunisienColors.gold.withOpacity(0.15),
+                        ),
+                        child: Center(child: Text('${p.score}', style: TextStyle(
+                          color: p.score == 0 ? const Color(0xFF4CAF50) : CafeTunisienColors.goldLight, fontWeight: FontWeight.bold, fontSize: 14))),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(children: [
+                          Icon(p.isBot ? Icons.smart_toy : Icons.person, color: Colors.white54, size: 16),
+                          const SizedBox(width: 6),
+                          Text(p.name, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                        ]),
+                        Text('Total: ${p.totalScore} pts', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+                      ])),
+                      if (p.score == 0) const Icon(Icons.star, color: Colors.amber, size: 24),
+                    ]),
                   )),
                 if (!isOffline && onlineResults != null && onlineResults['results'] != null)
-                  ...(onlineResults['results'] as List).map((r) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Card(child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: r['penalty'] == 0 ? Colors.green : Colors.orange,
-                        child: Text('${r['penalty']}'),
+                  ...(onlineResults['results'] as List).map((r) => Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: r['penalty'] == 0 ? const Color(0xFF1B5E20).withOpacity(0.3) : Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: r['penalty'] == 0 ? const Color(0xFF4CAF50).withOpacity(0.4) : Colors.white.withOpacity(0.08)),
+                    ),
+                    child: Row(children: [
+                      Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: CafeTunisienColors.gold.withOpacity(0.15)),
+                        child: Center(child: Text('${r['penalty']}', style: const TextStyle(color: CafeTunisienColors.goldLight, fontWeight: FontWeight.bold, fontSize: 14))),
                       ),
-                      title: Text(r['name']?.toString() ?? ''),
-                      subtitle: Text('Cartes restantes: ${r['cardsLeft']}'),
-                      trailing: r['penalty'] == 0 ? const Icon(Icons.star, color: Colors.amber) : null,
-                    )),
+                      const SizedBox(width: 12),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(r['name']?.toString() ?? '', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                        Text('Cartes restantes: ${r['cardsLeft']}', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+                      ])),
+                      if (r['penalty'] == 0) const Icon(Icons.star, color: Colors.amber, size: 24),
+                    ]),
                   )),
                 if (!isOffline && onlineResults != null && onlineResults['scores'] != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 16),
-                    child: Column(
-                      children: [
-                        const Text('Scores totaux', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                        const SizedBox(height: 8),
-                        ...(onlineResults['scores'] as List).map((s) => Text(
-                          '${s['name']}: ${s['totalScore']} pts',
-                          style: const TextStyle(color: Colors.white, fontSize: 16),
-                        )),
-                      ],
-                    ),
+                    child: Column(children: [
+                      const Text('Scores totaux', style: TextStyle(color: Colors.white54, fontSize: 13)),
+                      const SizedBox(height: 8),
+                      ...(onlineResults['scores'] as List).map((s) => Text(
+                        '${s['name']}: ${s['totalScore']} pts',
+                        style: const TextStyle(color: Colors.white, fontSize: 15),
+                      )),
+                    ]),
                   ),
                 const SizedBox(height: 32),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    if (isOffline) {
-                      notifier.offlineNextRound();
-                    } else {
-                      GoRouter.of(context).go('/');
-                    }
-                  },
-                  icon: Icon(isOffline ? Icons.play_arrow : Icons.home),
-                  label: Text(isOffline ? 'Manche suivante' : 'Retour à l\'accueil'),
+                SizedBox(
+                  width: double.infinity, height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      if (isOffline) { notifier.offlineNextRound(); }
+                      else { GoRouter.of(context).go('/'); }
+                    },
+                    icon: Icon(isOffline ? Icons.play_arrow : Icons.home, size: 22),
+                    label: Text(isOffline ? 'Manche suivante' : 'Retour à l\'accueil', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: CafeTunisienColors.gold,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 6,
+                      shadowColor: CafeTunisienColors.gold.withOpacity(0.4),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -919,31 +1014,99 @@ class _GameEndScreen extends StatelessWidget {
       winnerName = w.name;
     }
     return Scaffold(
-      backgroundColor: CafeTunisienColors.tableGreen,
+      backgroundColor: const Color(0xFF0A140B),
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('🎉', style: TextStyle(fontSize: 80)),
-                const SizedBox(height: 16),
-                const Text('Partie terminée !', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                Text('$winnerName gagne !', style: const TextStyle(color: CafeTunisienColors.goldLight, fontSize: 22)),
-                const SizedBox(height: 24),
-                if (engine != null)
-                  ...engine.state.players.map((p) => Card(child: ListTile(
-                    leading: CircleAvatar(child: Text('${p.totalScore}')),
-                    title: Text(p.name),
-                    trailing: p.id == engine.state.winnerId ? const Icon(Icons.emoji_events, color: Colors.amber, size: 30) : null,
-                  ))),
+        child: Stack(
+          children: [
+            // Decorative sparkle particles
+            ...List.generate(8, (i) => Positioned(
+              left: (i * 47.0 + 20) % MediaQuery.of(context).size.width,
+              top: (i * 73.0 + 40) % (MediaQuery.of(context).size.height * 0.6),
+              child: Text('✦', style: TextStyle(
+                fontSize: 10 + (i % 3) * 4.0,
+                color: CafeTunisienColors.gold.withOpacity(0.1 + (i % 4) * 0.05),
+              )),
+            )),
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Celebration with double ring
+                    Container(
+                      width: 120, height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(colors: [
+                          CafeTunisienColors.gold.withOpacity(0.4),
+                          CafeTunisienColors.gold.withOpacity(0.1),
+                          Colors.transparent,
+                        ], stops: const [0.0, 0.5, 1.0]),
+                        boxShadow: [
+                          BoxShadow(color: CafeTunisienColors.gold.withOpacity(0.25), blurRadius: 50, spreadRadius: 15),
+                        ],
+                        border: Border.all(color: CafeTunisienColors.gold.withOpacity(0.2), width: 2),
+                      ),
+                      child: const Center(child: Text('🎉', style: TextStyle(fontSize: 60))),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Partie terminée !', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                    const SizedBox(height: 8),
+                    Container(width: 80, height: 2, decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(1),
+                      gradient: LinearGradient(colors: [Colors.transparent, CafeTunisienColors.gold, Colors.transparent]),
+                    )),
+                    const SizedBox(height: 12),
+                    Text('$winnerName gagne ! 🎊', style: const TextStyle(color: CafeTunisienColors.goldLight, fontSize: 22, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 24),
+                    if (engine != null)
+                      ...engine.state.players.map((p) => Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: p.id == engine.state.winnerId ? CafeTunisienColors.gold.withOpacity(0.12) : Colors.white.withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: p.id == engine.state.winnerId ? CafeTunisienColors.gold.withOpacity(0.4) : Colors.white.withOpacity(0.06)),
+                    ),
+                    child: Row(children: [
+                      Container(
+                        width: 44, height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: p.id == engine.state.winnerId ? CafeTunisienColors.gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+                        ),
+                        child: Center(child: Text('${p.totalScore}', style: TextStyle(
+                          color: p.id == engine.state.winnerId ? CafeTunisienColors.goldLight : Colors.white70,
+                          fontWeight: FontWeight.bold, fontSize: 15))),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(p.name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600))),
+                      if (p.id == engine.state.winnerId)
+                        const Icon(Icons.emoji_events, color: Colors.amber, size: 28),
+                    ]),
+                  )),
                 const SizedBox(height: 32),
-                ElevatedButton.icon(onPressed: () => context.go('/'), icon: const Icon(Icons.home), label: const Text('Retour à l\'accueil')),
+                SizedBox(
+                  width: double.infinity, height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: () => context.go('/'),
+                    icon: const Icon(Icons.home, size: 22),
+                    label: const Text('Retour à l\'accueil', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: CafeTunisienColors.gold,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 6,
+                      shadowColor: CafeTunisienColors.gold.withOpacity(0.4),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
+        ),
+          ],
         ),
       ),
     );
@@ -961,7 +1124,7 @@ class _HotSeatHandoffScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CafeTunisienColors.tableGreen,
+      backgroundColor: const Color(0xFF0A140B),
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -969,23 +1132,77 @@ class _HotSeatHandoffScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('🔄', style: TextStyle(fontSize: 60)),
-                const SizedBox(height: 24),
-                const Text('Passez le téléphone à :', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                // Animated ring icon
+                Container(
+                  width: 100, height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(colors: [
+                      CafeTunisienColors.gold.withOpacity(0.15),
+                      Colors.transparent,
+                    ]),
+                    border: Border.all(color: CafeTunisienColors.gold.withOpacity(0.35), width: 2),
+                    boxShadow: [
+                      BoxShadow(color: CafeTunisienColors.gold.withOpacity(0.15), blurRadius: 20, spreadRadius: 5),
+                    ],
+                  ),
+                  child: const Center(child: Text('🔄', style: TextStyle(fontSize: 46))),
+                ),
+                const SizedBox(height: 28),
+                Text('Passez le téléphone à :', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 15)),
                 const SizedBox(height: 12),
-                Text(playerName, style: const TextStyle(color: CafeTunisienColors.goldLight, fontSize: 32, fontWeight: FontWeight.bold)),
+                // Player name with glow
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: CafeTunisienColors.gold.withOpacity(0.3)),
+                    color: CafeTunisienColors.gold.withOpacity(0.08),
+                  ),
+                  child: Text(playerName, style: const TextStyle(color: CafeTunisienColors.goldLight, fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                ),
+                const SizedBox(height: 14),
+                Container(width: 60, height: 2, decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(1),
+                  gradient: LinearGradient(colors: [Colors.transparent, CafeTunisienColors.gold, Colors.transparent]),
+                )),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.red.withOpacity(0.08),
+                    border: Border.all(color: Colors.red.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.visibility_off, color: Colors.red.withOpacity(0.5), size: 16),
+                      const SizedBox(width: 8),
+                      Text('Les autres joueurs, ne regardez pas !', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 40),
-                const Text('Les autres joueurs, ne regardez pas !', style: TextStyle(color: Colors.white54, fontSize: 14), textAlign: TextAlign.center),
-                const SizedBox(height: 40),
-                SizedBox(width: 240, height: 56,
+                SizedBox(width: 280, height: 54,
                   child: ElevatedButton.icon(
-                    onPressed: onReady, icon: const Icon(Icons.visibility, size: 24),
-                    label: const Text('C\'est moi, je suis prêt !', style: TextStyle(fontSize: 15)),
-                    style: ElevatedButton.styleFrom(backgroundColor: CafeTunisienColors.gold, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                    onPressed: onReady,
+                    icon: const Icon(Icons.visibility, size: 22),
+                    label: const Text('C\'est moi, je suis prêt !', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: CafeTunisienColors.gold,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 8,
+                      shadowColor: CafeTunisienColors.gold.withOpacity(0.4),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextButton(onPressed: onQuit, child: const Text('Quitter la partie', style: TextStyle(color: Colors.white38))),
+                TextButton(
+                  onPressed: onQuit,
+                  child: Text('Quitter la partie', style: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 13)),
+                ),
               ],
             ),
           ),
@@ -1019,14 +1236,24 @@ class _FrichVoteScreen extends StatelessWidget {
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFF5C3317).withOpacity(0.95),
-                border: const Border(bottom: BorderSide(color: Color(0xFFD4A017), width: 1)),
+                gradient: LinearGradient(colors: [
+                  const Color(0xFF3E1F00).withOpacity(0.95),
+                  const Color(0xFF5C3317).withOpacity(0.8),
+                ]),
+                border: Border(bottom: BorderSide(color: CafeTunisienColors.gold.withOpacity(0.5), width: 1)),
               ),
               child: Row(
                 children: [
-                  const Text('🔄', style: TextStyle(fontSize: 24)),
+                  Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: CafeTunisienColors.gold.withOpacity(0.15),
+                    ),
+                    child: const Center(child: Text('🔄', style: TextStyle(fontSize: 22))),
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -1125,6 +1352,8 @@ class _FrichVoteScreen extends StatelessWidget {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 6,
+                      shadowColor: const Color(0xFF4CAF50).withOpacity(0.3),
                     ),
                     onPressed: () => notifier.offlineVoteFrich(true),
                   ),
@@ -1133,8 +1362,8 @@ class _FrichVoteScreen extends StatelessWidget {
                     icon: const Icon(Icons.play_arrow, size: 18),
                     label: const Text('Non, on joue !'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFFFD700),
-                      side: const BorderSide(color: Color(0xFFFFD700), width: 1.5),
+                      foregroundColor: CafeTunisienColors.goldLight,
+                      side: BorderSide(color: CafeTunisienColors.gold.withOpacity(0.6), width: 1.5),
                       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),

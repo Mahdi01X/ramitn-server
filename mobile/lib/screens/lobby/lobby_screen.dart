@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../providers/room_provider.dart';
 import '../../providers/game_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../core/theme.dart';
+import '../../core/widgets.dart';
 
 class LobbyScreen extends ConsumerWidget {
   const LobbyScreen({super.key});
@@ -12,10 +14,7 @@ class LobbyScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final room = ref.watch(roomProvider);
-    final auth = ref.watch(authProvider);
-    final theme = Theme.of(context);
 
-    // Navigate to game when started
     ref.listen(roomProvider, (prev, next) {
       if (next.gameStarted && !(prev?.gameStarted ?? false)) {
         context.go('/game');
@@ -23,119 +22,145 @@ class LobbyScreen extends ConsumerWidget {
     });
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Lobby'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            ref.read(gameProvider.notifier).disconnectOnline();
-            context.go('/');
-          },
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            // Room code
-            if (room.roomCode != null) ...[
-              Text('Code de la room', style: theme.textTheme.bodyMedium),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: room.roomCode!));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Code copié !')),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        room.roomCode!,
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 6,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.copy, size: 20),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-            ],
-
-            // Players list
-            Text('Joueurs', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView.builder(
-                itemCount: room.players.length,
-                itemBuilder: (_, i) {
-                  final p = room.players[i];
-                  return Card(
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: p.ready ? Colors.green : Colors.grey,
-                        child: Icon(
-                          p.ready ? Icons.check : Icons.person,
-                          color: Colors.white,
-                        ),
-                      ),
-                      title: Text(p.name),
-                      trailing: p.ready
-                          ? const Chip(label: Text('Prêt'))
-                          : const Chip(label: Text('En attente')),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // Error
-            if (room.error != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(room.error!, style: TextStyle(color: theme.colorScheme.error)),
-              ),
-
-            // Action buttons
-            Row(
+      body: CafeBackground(
+        overlayOpacity: 0.78,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
               children: [
+                // Header
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        ref.read(gameProvider.notifier).disconnectOnline();
+                        context.go('/');
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withOpacity(0.08),
+                          border: Border.all(color: CafeTunisienColors.glassBorder),
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded, color: CafeTunisienColors.goldLight, size: 18),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Text('Lobby', style: AppTextStyles.titleLarge.copyWith(color: CafeTunisienColors.goldLight)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const GoldDivider(width: 80),
+                const SizedBox(height: 20),
+
+                // Room code
+                if (room.roomCode != null) ...[
+                  Text('Code de la room', style: AppTextStyles.bodySmall),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: room.roomCode!));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('✅ Code copié !'), backgroundColor: Color(0xFF4CAF50)),
+                      );
+                    },
+                    child: GlassCard(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      borderColor: CafeTunisienColors.gold.withOpacity(0.4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(room.roomCode!, style: AppTextStyles.displayMedium.copyWith(fontSize: 28, letterSpacing: 6, fontFamily: 'monospace')),
+                          const SizedBox(width: 12),
+                          const Icon(Icons.copy_rounded, size: 20, color: CafeTunisienColors.gold),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // Players
+                Text('Joueurs', style: AppTextStyles.labelGold),
+                const SizedBox(height: 12),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => ref.read(gameProvider.notifier).setReady(),
-                    child: const Text('Prêt !'),
+                  child: ListView.builder(
+                    itemCount: room.players.length,
+                    itemBuilder: (_, i) {
+                      final p = room.players[i];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: GlassCard(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: p.ready ? const Color(0xFF4CAF50).withOpacity(0.2) : CafeTunisienColors.gold.withOpacity(0.15),
+                                ),
+                                child: Icon(p.ready ? Icons.check : Icons.person, color: p.ready ? const Color(0xFF4CAF50) : CafeTunisienColors.goldLight, size: 18),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(child: Text(p.name, style: AppTextStyles.bodyLarge)),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: (p.ready ? const Color(0xFF4CAF50) : Colors.white10).withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  p.ready ? 'Prêt ✓' : 'En attente',
+                                  style: AppTextStyles.bodySmall.copyWith(color: p.ready ? const Color(0xFF4CAF50) : Colors.white38),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: room.players.every((p) => p.ready) && room.players.length >= 2
-                        ? () => ref.read(gameProvider.notifier).startOnlineGame()
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Démarrer'),
+
+                if (room.error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(room.error!, style: AppTextStyles.bodySmall.copyWith(color: CafeTunisienColors.warmRed)),
                   ),
+
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: PremiumButton(
+                        label: 'Prêt !',
+                        icon: Icons.thumb_up,
+                        isSecondary: true,
+                        onTap: () => ref.read(gameProvider.notifier).setReady(),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: PremiumButton(
+                        label: 'Démarrer',
+                        icon: Icons.play_arrow_rounded,
+                        onTap: room.players.every((p) => p.ready) && room.players.length >= 2
+                            ? () => ref.read(gameProvider.notifier).startOnlineGame()
+                            : null,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
-

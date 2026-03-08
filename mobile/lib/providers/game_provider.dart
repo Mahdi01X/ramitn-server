@@ -526,6 +526,41 @@ class GameNotifier extends StateNotifier<GameProviderState> {
     _notifyOffline();
   }
 
+  /// Reorder a group of selected cards, moving them all to [targetIndex] in the visible hand.
+  void reorderGroup(List<int> cardIds, int targetIndex) {
+    final engine = state.offlineEngine;
+    if (engine == null) return;
+    final hand = engine.state.currentPlayer.hand;
+    final stagedIds = state.stagedMelds.expand((m) => m.cardIds).toSet();
+    final visibleCards = hand.where((c) => !stagedIds.contains(c.id)).toList();
+
+    final groupIdSet = cardIds.toSet();
+    // Extract group cards in their current order
+    final groupCards = visibleCards.where((c) => groupIdSet.contains(c.id)).toList();
+    // Remove group cards from visible
+    final remaining = visibleCards.where((c) => !groupIdSet.contains(c.id)).toList();
+    // Insert group at target
+    final clamped = targetIndex.clamp(0, remaining.length);
+    remaining.insertAll(clamped, groupCards);
+
+    // Rebuild engine hand
+    final newHand = <models.Card>[];
+    int vi = 0;
+    for (final c in hand) {
+      if (stagedIds.contains(c.id)) {
+        newHand.add(c);
+      } else {
+        if (vi < remaining.length) newHand.add(remaining[vi++]);
+      }
+    }
+    while (vi < remaining.length) { newHand.add(remaining[vi++]); }
+
+    hand.clear();
+    hand.addAll(newHand);
+    clearSelection();
+    _notifyOffline();
+  }
+
   // ─── Online Mode ───────────────────────────────────────
 
   /// Connect to the server with a display name (no JWT required).

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
+import '../../core/theme.dart';
+import '../../core/widgets.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -27,102 +29,157 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    final theme = Theme.of(context);
 
     ref.listen(authProvider, (prev, next) {
-      if (next.isLoggedIn) {
-        context.go('/');
-      }
+      if (next.isLoggedIn) context.go('/');
     });
 
     return Scaffold(
-      appBar: AppBar(title: Text(_isRegister ? 'Inscription' : 'Connexion')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 20),
-            const Text('🃏', textAlign: TextAlign.center, style: TextStyle(fontSize: 60)),
-            const SizedBox(height: 24),
-
-            if (_isRegister)
-              TextField(
-                controller: _nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Nom d\'affichage',
-                  prefixIcon: Icon(Icons.person),
-                  border: OutlineInputBorder(),
+      body: CafeBackground(
+        overlayOpacity: 0.78,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => context.go('/'),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withOpacity(0.08),
+                          border: Border.all(color: CafeTunisienColors.glassBorder),
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded, color: CafeTunisienColors.goldLight, size: 18),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            if (_isRegister) const SizedBox(height: 16),
+                const SizedBox(height: 20),
+                const Center(child: Text('🃏', style: TextStyle(fontSize: 60))),
+                const SizedBox(height: 16),
+                Center(child: Text(_isRegister ? 'Inscription' : 'Connexion', style: AppTextStyles.titleLarge.copyWith(color: CafeTunisienColors.goldLight))),
+                const SizedBox(height: 8),
+                const Center(child: GoldDivider(width: 60)),
+                const SizedBox(height: 24),
 
-            TextField(
-              controller: _emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email),
-                border: OutlineInputBorder(),
-              ),
+                if (_isRegister) ...[
+                  GlassCard(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    child: TextField(
+                      controller: _nameCtrl,
+                      style: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'Nom d\'affichage',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                        prefixIcon: const Icon(Icons.person, color: CafeTunisienColors.gold),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                GlassCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  child: TextField(
+                    controller: _emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    style: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: 'Email',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                      prefixIcon: const Icon(Icons.email, color: CafeTunisienColors.gold),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                GlassCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  child: TextField(
+                    controller: _passCtrl,
+                    obscureText: true,
+                    style: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: 'Mot de passe',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                      prefixIcon: const Icon(Icons.lock, color: CafeTunisienColors.gold),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                if (auth.error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: CafeTunisienColors.warmRed.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: CafeTunisienColors.warmRed.withOpacity(0.3)),
+                      ),
+                      child: Text(auth.error!, style: AppTextStyles.bodySmall.copyWith(color: Colors.redAccent), textAlign: TextAlign.center),
+                    ),
+                  ),
+
+                PremiumButton(
+                  label: _isRegister ? 'S\'inscrire' : 'Se connecter',
+                  icon: _isRegister ? Icons.person_add : Icons.login,
+                  isLoading: auth.isLoading,
+                  onTap: auth.isLoading ? null : _submit,
+                ),
+                const SizedBox(height: 16),
+
+                Center(
+                  child: TextButton(
+                    onPressed: () => setState(() => _isRegister = !_isRegister),
+                    child: Text(
+                      _isRegister ? 'Déjà un compte ? Se connecter' : 'Pas de compte ? S\'inscrire',
+                      style: AppTextStyles.bodySmall.copyWith(color: CafeTunisienColors.goldLight),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Center(
+                  child: TextButton(
+                    onPressed: () => context.go('/'),
+                    child: Text('Continuer en invité', style: AppTextStyles.bodySmall.copyWith(color: Colors.white38)),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-
-            TextField(
-              controller: _passCtrl,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Mot de passe',
-                prefixIcon: Icon(Icons.lock),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            if (auth.error != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Text(auth.error!, style: TextStyle(color: theme.colorScheme.error)),
-              ),
-
-            ElevatedButton(
-              onPressed: auth.isLoading ? null : _submit,
-              child: auth.isLoading
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(_isRegister ? 'S\'inscrire' : 'Se connecter'),
-            ),
-            const SizedBox(height: 12),
-
-            TextButton(
-              onPressed: () => setState(() => _isRegister = !_isRegister),
-              child: Text(_isRegister
-                  ? 'Déjà un compte ? Se connecter'
-                  : 'Pas de compte ? S\'inscrire'),
-            ),
-            const Divider(height: 40),
-
-            OutlinedButton.icon(
-              onPressed: auth.isLoading ? null : _guestLogin,
-              icon: const Icon(Icons.person_outline),
-              label: const Text('Continuer en tant qu\'invité'),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
   void _submit() {
-    final notifier = ref.read(authProvider.notifier);
     if (_isRegister) {
-      notifier.register(_emailCtrl.text, _passCtrl.text, _nameCtrl.text);
+      ref.read(authProvider.notifier).register(
+        _emailCtrl.text.trim(),
+        _passCtrl.text,
+        _nameCtrl.text.trim(),
+      );
     } else {
-      notifier.login(_emailCtrl.text, _passCtrl.text);
+      ref.read(authProvider.notifier).login(
+        _emailCtrl.text.trim(),
+        _passCtrl.text,
+      );
     }
-  }
-
-  void _guestLogin() {
-    ref.read(authProvider.notifier).guestLogin();
   }
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../providers/game_provider.dart';
+import '../../../core/theme.dart';
 
 /// Action bar with 2 modes:
 /// - Pre-opening: "Poser temp" → accumulate paquets → "Confirmer ouverture"
@@ -56,11 +57,21 @@ class GameActionBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xFF3E2113).withOpacity(0.95),
-        border: const Border(
-          top: BorderSide(color: Color(0xFFD4A017), width: 1),
-          bottom: BorderSide(color: Color(0xFFD4A017), width: 1),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF3E1F00).withOpacity(0.98),
+            const Color(0xFF2C1810).withOpacity(0.95),
+          ],
         ),
+        border: Border(
+          top: BorderSide(color: CafeTunisienColors.gold.withOpacity(0.5), width: 1),
+          bottom: BorderSide(color: CafeTunisienColors.gold.withOpacity(0.3), width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, -2)),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -162,17 +173,20 @@ class GameActionBar extends StatelessWidget {
         // POST-OPENING: hint when 1 card selected (tap a meld to lay off)
         if (hasOpened && selectedCount == 1)
           _badge('👆 Paquet', const Color(0xFF42A5F5)),
-        if (hasOpened && selectedCount == 1)
-          const SizedBox(width: 4),
 
-        // Discard
-        _btn(
-          Icons.arrow_downward_rounded,
-          'Jeter',
-          canDiscard ? const Color(0xFFFFD700) : Colors.white24,
-          canDiscard ? onDiscard : null,
-          highlighted: canDiscard,
-        ),
+        // Discard hint (drag card up to discard)
+        if (selectedCount == 0 && stagedMelds.isEmpty)
+          Opacity(
+            opacity: 0.4,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.swipe_up_rounded, color: Colors.white38, size: 14),
+                const SizedBox(width: 3),
+                const Text('Glisser ↑', style: TextStyle(color: Colors.white30, fontSize: 9)),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -191,18 +205,31 @@ class GameActionBar extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: EdgeInsets.symmetric(horizontal: big ? 12 : 8, vertical: 4),
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.symmetric(horizontal: big ? 14 : 8, vertical: 5),
           decoration: BoxDecoration(
-            color: highlighted ? color.withOpacity(0.2) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: highlighted ? Border.all(color: color, width: 1) : null,
+            gradient: highlighted
+                ? LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [color.withOpacity(0.3), color.withOpacity(0.1)],
+                  )
+                : null,
+            borderRadius: BorderRadius.circular(10),
+            border: highlighted
+                ? Border.all(color: color.withOpacity(0.8), width: 1.5)
+                : null,
+            boxShadow: highlighted
+                ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, spreadRadius: 0)]
+                : null,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, color: color, size: big ? 24 : 20),
-              Text(label, style: TextStyle(color: color, fontSize: big ? 10 : 9, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 1),
+              Text(label, style: TextStyle(color: color, fontSize: big ? 10 : 9, fontWeight: FontWeight.w700)),
             ],
           ),
         ),

@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/game_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../core/theme.dart';
+import '../../core/widgets.dart';
 
 class CreateRoomScreen extends ConsumerStatefulWidget {
   const CreateRoomScreen({super.key});
@@ -23,44 +24,74 @@ class _CreateRoomScreenState extends ConsumerState<CreateRoomScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Créer une partie')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Nombre de joueurs', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            SegmentedButton<int>(
-              segments: const [
-                ButtonSegment(value: 2, label: Text('2')),
-                ButtonSegment(value: 3, label: Text('3')),
-                ButtonSegment(value: 4, label: Text('4')),
+      body: CafeBackground(
+        overlayOpacity: 0.78,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => context.go('/'),
+                      child: Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withOpacity(0.08),
+                          border: Border.all(color: CafeTunisienColors.glassBorder),
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded, color: CafeTunisienColors.goldLight, size: 18),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Text('Créer une partie', style: AppTextStyles.titleLarge.copyWith(color: CafeTunisienColors.goldLight)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const GoldDivider(width: 80),
+                const SizedBox(height: 32),
+
+                Text('Nombre de joueurs', style: AppTextStyles.bodyMedium),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [2, 3, 4].map((n) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _numPlayers = n),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 60, height: 60,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _numPlayers == n ? CafeTunisienColors.gold : Colors.white.withOpacity(0.06),
+                          border: Border.all(color: _numPlayers == n ? CafeTunisienColors.goldLight : CafeTunisienColors.glassBorder, width: _numPlayers == n ? 2 : 1),
+                          boxShadow: _numPlayers == n ? [BoxShadow(color: CafeTunisienColors.gold.withOpacity(0.3), blurRadius: 12)] : null,
+                        ),
+                        child: Center(child: Text('$n', style: AppTextStyles.titleMedium.copyWith(color: _numPlayers == n ? Colors.white : Colors.white54, fontWeight: FontWeight.w700))),
+                      ),
+                    ),
+                  )).toList(),
+                ),
+
+                const Spacer(),
+
+                PremiumButton(
+                  label: 'Créer la room',
+                  icon: Icons.add_rounded,
+                  onTap: () {
+                    ref.read(gameProvider.notifier).createRoom(numPlayers: _numPlayers);
+                    context.go('/lobby');
+                  },
+                ),
               ],
-              selected: {_numPlayers},
-              onSelectionChanged: (v) => setState(() => _numPlayers = v.first),
             ),
-            const Spacer(),
-            ElevatedButton.icon(
-              onPressed: () {
-                ref.read(gameProvider.notifier).createRoom(
-                  numPlayers: _numPlayers,
-                );
-                context.go('/lobby');
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Créer la room'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
-
-

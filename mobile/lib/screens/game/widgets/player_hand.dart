@@ -122,8 +122,8 @@ class _PlayerHandWidgetState extends State<PlayerHandWidget> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
-              BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.7), blurRadius: 20, spreadRadius: 3),
-              BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 12, offset: const Offset(0, 6)),
+              BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.6), blurRadius: 24, spreadRadius: 4),
+              BoxShadow(color: Colors.black.withOpacity(0.6), blurRadius: 16, offset: const Offset(0, 8)),
             ],
           ),
           child: PlayingCard(card: card, width: _cardW, height: _cardH, selected: true),
@@ -169,12 +169,15 @@ class _PlayerHandWidgetState extends State<PlayerHandWidget> {
 
     return Container(
       height: _cardH + 28,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
-          colors: [Color(0xFF5C3317), Color(0xFF3E2113)],
+          colors: [Color(0xFF5C3317), Color(0xFF3E1F00), Color(0xFF2C1810)],
         ),
-        border: Border(top: BorderSide(color: Color(0xFFD4A017), width: 1.5)),
+        border: Border(top: BorderSide(color: const Color(0xFFD4A017).withOpacity(0.6), width: 1.5)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, -3)),
+        ],
       ),
       child: SingleChildScrollView(
         controller: _scrollCtrl,
@@ -204,11 +207,15 @@ class _PlayerHandWidgetState extends State<PlayerHandWidget> {
                     width: 6,
                     height: _cardH + 4,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      gradient: const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xFFFFD700), Colors.white, Color(0xFFFFD700)],
+                      ),
                       borderRadius: BorderRadius.circular(3),
                       boxShadow: [
-                        BoxShadow(color: Colors.white.withOpacity(0.9), blurRadius: 12, spreadRadius: 3),
-                        BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.6), blurRadius: 18, spreadRadius: 2),
+                        BoxShadow(color: Colors.white.withOpacity(0.95), blurRadius: 14, spreadRadius: 4),
+                        BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.7), blurRadius: 22, spreadRadius: 3),
                       ],
                     ),
                   ),
