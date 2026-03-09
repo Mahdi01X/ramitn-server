@@ -339,6 +339,9 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
   }
 
   Widget _buildWaitingRoom(RoomState room) {
+    // Cast to avoid runtime type errors with dynamic lists
+    final List<RoomPlayerInfo> typedPlayers = room.players.map<RoomPlayerInfo>((p) => p as RoomPlayerInfo).toList();
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -384,12 +387,10 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              Text('Joueurs (${room.players.length}/${room.numPlayers})', style: AppTextStyles.labelGold),
+              Text('Joueurs (${typedPlayers.length}/${room.numPlayers})', style: AppTextStyles.labelGold),
               const SizedBox(height: 12),
-              ...room.players.asMap().entries.map((entry) {
-                final i = entry.key;
-                final p = entry.value;
-                return Padding(
+              for (int i = 0; i < typedPlayers.length; i++)
+                Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
                     children: [
@@ -397,34 +398,33 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
                         width: 34, height: 34,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: p.ready ? const Color(0xFF4CAF50).withOpacity(0.2) : CafeTunisienColors.gold.withOpacity(0.15),
-                          border: Border.all(color: p.ready ? const Color(0xFF4CAF50).withOpacity(0.5) : CafeTunisienColors.gold.withOpacity(0.3)),
+                          color: typedPlayers[i].ready ? const Color(0xFF4CAF50).withOpacity(0.2) : CafeTunisienColors.gold.withOpacity(0.15),
+                          border: Border.all(color: typedPlayers[i].ready ? const Color(0xFF4CAF50).withOpacity(0.5) : CafeTunisienColors.gold.withOpacity(0.3)),
                         ),
-                        child: Icon(p.ready ? Icons.check : Icons.person, color: p.ready ? const Color(0xFF4CAF50) : CafeTunisienColors.goldLight, size: 18),
+                        child: Icon(typedPlayers[i].ready ? Icons.check : Icons.person, color: typedPlayers[i].ready ? const Color(0xFF4CAF50) : CafeTunisienColors.goldLight, size: 18),
                       ),
                       const SizedBox(width: 12),
-                      Text(p.name, style: AppTextStyles.bodyLarge.copyWith(fontSize: 15)),
+                      Text(typedPlayers[i].name, style: AppTextStyles.bodyLarge.copyWith(fontSize: 15)),
                       const Spacer(),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                         decoration: BoxDecoration(
-                          color: (i == 0 ? CafeTunisienColors.amber : p.ready ? const Color(0xFF4CAF50) : Colors.white10).withOpacity(0.2),
+                          color: (i == 0 ? CafeTunisienColors.amber : typedPlayers[i].ready ? const Color(0xFF4CAF50) : Colors.white10).withOpacity(0.2),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          i == 0 ? 'Hôte' : (p.ready ? 'Prêt ✓' : 'En attente'),
+                          i == 0 ? 'Hôte' : (typedPlayers[i].ready ? 'Prêt ✓' : 'En attente'),
                           style: AppTextStyles.bodySmall.copyWith(
-                            color: i == 0 ? CafeTunisienColors.amber : (p.ready ? const Color(0xFF4CAF50) : Colors.white38),
+                            color: i == 0 ? CafeTunisienColors.amber : (typedPlayers[i].ready ? const Color(0xFF4CAF50) : Colors.white38),
                             fontSize: 10,
                           ),
                         ),
                       ),
                     ],
                   ),
-                );
-              }),
+                ),
               // Empty slots
-              for (int i = room.players.length; i < room.numPlayers; i++)
+              for (int i = typedPlayers.length; i < room.numPlayers; i++)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
@@ -451,12 +451,12 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
         Builder(builder: (context) {
           final socket = ref.read(socketServiceProvider);
           final myId = socket.playerId;
-          final isHost = room.players.isNotEmpty && room.players.first.id == myId;
-          final myPlayerMatches = room.players.where((p) => p.id == myId);
+          final isHost = typedPlayers.isNotEmpty && typedPlayers.first.id == myId;
+          final myPlayerMatches = typedPlayers.where((RoomPlayerInfo p) => p.id == myId);
           final myPlayer = myPlayerMatches.isNotEmpty ? myPlayerMatches.first : null;
           final iAmReady = myPlayer?.ready ?? false;
-          final allReady = room.players.every((p) => p.ready);
-          final canStart = isHost && room.players.length >= 2 && allReady;
+          final allReady = typedPlayers.every((RoomPlayerInfo p) => p.ready);
+          final canStart = isHost && typedPlayers.length >= 2 && allReady;
 
           return Column(
             children: [
@@ -486,7 +486,7 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
               if (isHost && !canStart) ...[
                 const SizedBox(height: 8),
                 Text(
-                  room.players.length < room.numPlayers
+                  typedPlayers.length < room.numPlayers
                       ? 'En attente de joueurs...'
                       : 'Tous les joueurs doivent être prêts',
                   style: AppTextStyles.bodySmall.copyWith(color: Colors.white30),
@@ -497,7 +497,7 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
         }),
 
         const SizedBox(height: 16),
-        if (room.players.length < room.numPlayers)
+        if (typedPlayers.length < room.numPlayers)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
