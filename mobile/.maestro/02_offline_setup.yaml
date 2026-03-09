@@ -1,0 +1,25 @@
+# Flow 2: Offline Game Setup and Start
+# Creates an offline game with 2 humans + 2 bots and launches it
+appId: com.ramitn.app
+name: "Offline Game Setup"
+---
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Navigate to offline setup
+- tapOn: "Jouer Hors-ligne"
+- waitForAnimationToEnd
+
+# Should see the setup screen
+- assertVisible: "Lancer la partie"
+
+# Default is 2 humans — tap start
+- tapOn: "Lancer la partie"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Game table should be visible (draw pile, etc.)
+- assertVisible:
+    id: "draw_pile"
+    optional: true

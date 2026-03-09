@@ -122,6 +122,8 @@ describe('Opening', () => {
   });
 
   test('canOpen accepts run with joker when openingRequiresCleanRun is false', () => {
+    // Run 10-JK-Q-K-A = positions 10,11,12,13,14 → 10+10+10+10+11=51
+    // Set of 7s = 7+7+7 = 21. Total = 72 >= 71
     const melds: Meld[] = [{
       id: 'run',
       type: MeldType.Run,
@@ -133,6 +135,15 @@ describe('Opening', () => {
         card(Rank.Ace, Suit.Hearts, 5),
       ],
       jokerSubstitutions: { 99: { suit: 'hearts', rank: 11 } },
+    }, {
+      id: 'set',
+      type: MeldType.Set,
+      cards: [
+        card(Rank.Seven, Suit.Spades, 20),
+        card(Rank.Seven, Suit.Diamonds, 21),
+        card(Rank.Seven, Suit.Clubs, 22),
+      ],
+      jokerSubstitutions: {},
     }];
     expect(canOpen(melds, { ...config, openingRequiresCleanRun: false }, false)).toBe(true);
   });

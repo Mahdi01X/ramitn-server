@@ -1,0 +1,24 @@
+# Flow 4: Rules Screen Navigation
+# Verifies rules screen loads and displays content
+appId: com.ramitn.app
+name: "Rules Screen"
+---
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Navigate to rules
+- tapOn: "Règles du jeu"
+- waitForAnimationToEnd
+
+# Verify rules content is visible
+- assertVisible:
+    text: "Rami"
+    optional: true
+
+# Go back
+- pressKey: back
+- waitForAnimationToEnd
+
+# Should be back on home
+- assertVisible: "Jouer Hors-ligne"

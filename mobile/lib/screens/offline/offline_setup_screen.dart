@@ -225,6 +225,7 @@ class _OfflineSetupScreenState extends ConsumerState<OfflineSetupScreen> {
 
               // ─── Start Button ────────────────────────
               Container(
+                key: const ValueKey('btn_start_game'),
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                 child: PremiumButton(

@@ -4,7 +4,7 @@ import { Player } from '../types/player';
 import { GameConfig, DEFAULT_CONFIG } from '../types/game-config';
 import { GameState, GamePhase, TurnStep, GameAction, GameError } from '../types/game-state';
 import { createDeck, shuffle, deal } from './deck';
-import { drawFromDeck, drawFromDiscard, meld, layoff, replaceJoker, discard } from './turn';
+import { drawFromDeck, drawFromDiscard, meld, confirmOpening, cancelStaging, layoff, replaceJoker, discard } from './turn';
 import { calculateRoundScores, checkGameEnd } from './scoring';
 
 let gameIdCounter = 0;
@@ -26,6 +26,8 @@ export function createGame(
     hasOpened: false,
     isBot: info.isBot,
     isConnected: true,
+    drewFromDiscard: false,
+    stagedMelds: [],
   }));
 
   const state: GameState = {
@@ -52,19 +54,23 @@ export function startRound(state: GameState, seed?: number): GameState {
   const deck = shuffle(createDeck(state.config.numJokers), seed);
   const [hands, remaining] = deal(deck, state.players.length, state.config.cardsPerPlayer);
 
+  // First player rotates each round: (round) % numPlayers
+  const firstPlayerIdx = state.round % state.players.length;
+
   // First player gets 1 extra card (15 instead of 14) — Rami Tunisien rule
-  // They start at Play step and must discard first (no draw needed)
   const firstPlayerExtraCard = remaining.length > 0 ? remaining[0] : null;
   const drawPile = remaining.slice(1);
 
   const players = state.players.map((p, i) => ({
     ...p,
-    hand: i === 0 && firstPlayerExtraCard
+    hand: i === firstPlayerIdx && firstPlayerExtraCard
       ? [...hands[i], firstPlayerExtraCard]
       : hands[i],
     melds: [],
     hasOpened: false,
     score: 0,
+    drewFromDiscard: false,
+    stagedMelds: [],
   }));
 
   return {
@@ -77,13 +83,32 @@ export function startRound(state: GameState, seed?: number): GameState {
     tableMelds: [],
     round: state.round + 1,
     turnCount: 0,
-    currentPlayerIndex: 0,
+    currentPlayerIndex: firstPlayerIdx,
     lastAction: null,
   };
 }
 
+/**
+ * Normalize action type aliases sent by different clients.
+ * Flutter/simple-server use draw_deck / draw_discard,
+ * shared/ canonical names are draw_from_deck / draw_from_discard.
+ */
+function normalizeAction(action: GameAction): GameAction {
+  const aliases: Record<string, string> = {
+    draw_deck: 'draw_from_deck',
+    draw_discard: 'draw_from_discard',
+  };
+  const canonical = aliases[(action as any).type];
+  if (canonical) {
+    return { ...action, type: canonical } as GameAction;
+  }
+  return action;
+}
+
 /** Apply a game action and return the new state */
-export function applyAction(state: GameState, action: GameAction): GameState {
+export function applyAction(state: GameState, rawAction: GameAction): GameState {
+  const action = normalizeAction(rawAction);
+
   if (state.phase === GamePhase.GameEnd) {
     throw new GameError('GAME_ENDED', 'Game has already ended');
   }
@@ -106,6 +131,14 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       newState = meld(state, action.playerId, action.cardIds);
       break;
 
+    case 'confirm_opening':
+      newState = confirmOpening(state, action.playerId);
+      break;
+
+    case 'cancel_staging':
+      newState = cancelStaging(state, action.playerId);
+      break;
+
     case 'layoff':
       newState = layoff(state, action.playerId, action.cardId, action.targetMeldId, action.position);
       break;
@@ -116,7 +149,7 @@ export function applyAction(state: GameState, action: GameAction): GameState {
 
     case 'discard':
       newState = discard(state, action.playerId, action.cardId);
-      // After discard, check if round ends and advance turn
+      // After discard, apply penalty and check round end, advance turn
       newState = afterDiscard(newState, action.playerId);
       break;
 
@@ -127,12 +160,29 @@ export function applyAction(state: GameState, action: GameAction): GameState {
   return newState;
 }
 
-/** Handle post-discard logic: check round end, advance turn */
+/** Handle post-discard logic: apply penalty, check round end, advance turn */
 function afterDiscard(state: GameState, playerId: string): GameState {
   const player = state.players.find(p => p.id === playerId)!;
 
+  // Apply discard-draw penalty: drew from discard but didn't open → +penalty
+  if (player.drewFromDiscard && !player.hasOpened && state.config.discardDrawPenalty > 0) {
+    const players = state.players.map(p =>
+      p.id === playerId
+        ? { ...p, totalScore: p.totalScore + state.config.discardDrawPenalty, drewFromDiscard: false }
+        : p,
+    );
+    state = { ...state, players };
+  }
+
+  // Reset drewFromDiscard for next turn
+  const resetPlayers = state.players.map(p =>
+    p.id === playerId ? { ...p, drewFromDiscard: false } : p,
+  );
+  state = { ...state, players: resetPlayers };
+
   // Check if player has emptied their hand (round win)
-  if (player.hand.length === 0) {
+  const updatedPlayer = state.players.find(p => p.id === playerId)!;
+  if (updatedPlayer.hand.length === 0) {
     return endRound(state, playerId);
   }
 
@@ -198,6 +248,7 @@ function advanceTurn(state: GameState): GameState {
 export function getValidActions(state: GameState): GameAction['type'][] {
   if (state.phase !== GamePhase.PlayerTurn) return [];
 
+  const player = state.players[state.currentPlayerIndex];
   const actions: GameAction['type'][] = [];
 
   if (state.turnStep === TurnStep.Draw) {
@@ -210,9 +261,14 @@ export function getValidActions(state: GameState): GameAction['type'][] {
   }
 
   if (state.turnStep === TurnStep.Play) {
-    actions.push('meld', 'layoff', 'discard');
-    if (!state.config.jokerLocked) {
-      actions.push('replace_joker');
+    actions.push('meld', 'discard');
+    if (player.hasOpened) {
+      actions.push('layoff');
+      if (!state.config.jokerLocked) {
+        actions.push('replace_joker');
+      }
+    } else if (player.stagedMelds.length > 0) {
+      actions.push('confirm_opening', 'cancel_staging');
     }
   }
 

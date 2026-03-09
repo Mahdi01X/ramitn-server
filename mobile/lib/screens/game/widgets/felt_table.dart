@@ -193,6 +193,7 @@ class _PileZone extends StatelessWidget {
         const SizedBox(width: 28),
         // Discard pile — also a DragTarget for discarding cards
         DragTarget<int>(
+          key: const ValueKey('discard_pile'),
           onWillAcceptWithDetails: (details) => canDrop,
           onAcceptWithDetails: (details) => onDropDiscard?.call(details.data),
           builder: (context, candidateData, rejectedData) {
@@ -262,6 +263,7 @@ class _PileZone extends StatelessWidget {
 
   Widget _deckStack(bool glow) {
     return Stack(
+      key: const ValueKey('draw_pile'),
       children: [
         if (drawCount > 4) Transform.translate(offset: const Offset(2, 2), child: _deckCard(false)),
         if (drawCount > 2) Transform.translate(offset: const Offset(1, 1), child: _deckCard(false)),

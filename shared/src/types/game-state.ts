@@ -40,7 +40,11 @@ export interface GameState {
 export type GameAction =
   | { type: 'draw_from_deck'; playerId: string }
   | { type: 'draw_from_discard'; playerId: string }
+  | { type: 'draw_deck'; playerId: string }       // alias for draw_from_deck (Flutter/simple-server compat)
+  | { type: 'draw_discard'; playerId: string }     // alias for draw_from_discard (Flutter/simple-server compat)
   | { type: 'meld'; playerId: string; cardIds: number[]; meldType?: string }
+  | { type: 'confirm_opening'; playerId: string }
+  | { type: 'cancel_staging'; playerId: string }
   | { type: 'layoff'; playerId: string; cardId: number; targetMeldId: string; position: 'start' | 'end' }
   | { type: 'replace_joker'; playerId: string; cardId: number; targetMeldId: string; jokerCardId: number }
   | { type: 'discard'; playerId: string; cardId: number }

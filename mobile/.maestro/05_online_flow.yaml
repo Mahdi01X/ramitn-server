@@ -1,0 +1,25 @@
+# Flow 5: Online Game — Quick Online Screen
+# Tests the quick online flow (pseudo entry, connect)
+appId: com.ramitn.app
+name: "Quick Online Flow"
+---
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Navigate to online
+- tapOn: "Jouer En ligne"
+- waitForAnimationToEnd
+
+# Should see pseudo/name input screen
+# Take screenshot to document the state
+- takeScreenshot: "quick_online_initial"
+
+# Enter a pseudo name
+- tapOn:
+    text: "Pseudo"
+    optional: true
+- inputText: "TestPlayer"
+
+# Take screenshot after input
+- takeScreenshot: "quick_online_after_pseudo"

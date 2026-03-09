@@ -12,5 +12,9 @@ export interface Player {
   hasOpened: boolean;
   isBot: boolean;
   isConnected: boolean;
+  /** True if player drew from discard this turn (for penalty tracking) */
+  drewFromDiscard: boolean;
+  /** Melds staged for batch opening (not yet committed) */
+  stagedMelds: Meld[];
 }
 

@@ -13,6 +13,10 @@ export interface GameConfig {
   jokerLocked: boolean;
   maxJokersPerMeld: number;
   turnTimeoutSeconds: number; // 0 = no timer
+  /** Block draw from discard if player has exact duplicate in hand */
+  duplicateProtection: boolean;
+  /** Penalty for drawing from discard without opening */
+  discardDrawPenalty: number;
 }
 
 export const DEFAULT_CONFIG: GameConfig = {
@@ -29,6 +33,8 @@ export const DEFAULT_CONFIG: GameConfig = {
   jokerLocked: false,
   maxJokersPerMeld: 1,
   turnTimeoutSeconds: 60,
+  duplicateProtection: true,
+  discardDrawPenalty: 100,
 };
 
 

@@ -156,19 +156,19 @@ class GameActionBar extends StatelessWidget {
 
         // Clear selection
         if (selectedCount > 0)
-          _btn(Icons.close, 'Annuler', Colors.white54, onClear),
+          _btn(Icons.close, 'Annuler', Colors.white54, onClear, key: 'btn_clear'),
 
         // PRE-OPENING: "Poser temp" button
         if (!hasOpened && selectedCount >= 3 && selectionIsValid)
-          _btn(Icons.add_box_outlined, 'Ajouter', const Color(0xFF4CAF50), onStageMeld, highlighted: true),
+          _btn(Icons.add_box_outlined, 'Ajouter', const Color(0xFF4CAF50), onStageMeld, highlighted: true, key: 'btn_stage_meld'),
 
         // PRE-OPENING: "Confirmer ouverture" button
         if (!hasOpened && canConfirmOpening)
-          _btn(Icons.check_circle, 'Ouvrir!', const Color(0xFF4CAF50), onConfirmOpen, highlighted: true, big: true),
+          _btn(Icons.check_circle, 'Ouvrir!', const Color(0xFF4CAF50), onConfirmOpen, highlighted: true, big: true, key: 'btn_confirm_opening'),
 
         // POST-OPENING: "Poser" directly
         if (hasOpened && selectedCount >= 3 && selectionIsValid)
-          _btn(Icons.layers, 'Poser', const Color(0xFF4CAF50), onDirectMeld, highlighted: true),
+          _btn(Icons.layers, 'Poser', const Color(0xFF4CAF50), onDirectMeld, highlighted: true, key: 'btn_direct_meld'),
 
         // POST-OPENING: hint when 1 card selected (tap a meld to lay off)
         if (hasOpened && selectedCount == 1)
@@ -199,8 +199,9 @@ class GameActionBar extends StatelessWidget {
     );
   }
 
-  Widget _btn(IconData icon, String label, Color color, VoidCallback? onTap, {bool highlighted = false, bool big = false}) {
+  Widget _btn(IconData icon, String label, Color color, VoidCallback? onTap, {bool highlighted = false, bool big = false, String? key}) {
     return Padding(
+      key: key != null ? ValueKey(key) : null,
       padding: const EdgeInsets.symmetric(horizontal: 3),
       child: GestureDetector(
         onTap: onTap,

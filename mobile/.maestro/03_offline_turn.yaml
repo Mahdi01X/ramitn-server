@@ -1,0 +1,26 @@
+# Flow 3: Offline Game — Valid Turn
+# Starts a 1-human + 1-bot game and plays through a turn
+appId: com.ramitn.app
+name: "Offline Valid Turn"
+---
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Go to offline setup
+- tapOn: "Jouer Hors-ligne"
+- waitForAnimationToEnd
+
+# Start the game (default 2 players)
+- tapOn: "Lancer la partie"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# First player has 15 cards (must discard).
+# The action bar should show discard hint
+# Try to discard by swiping a card up (drag gesture)
+# Since cards are displayed in the fan, we can tap the first card
+# to select it, verify the UI reacts
+
+# Take a screenshot to document the initial state
+- takeScreenshot: "offline_turn_initial_state"

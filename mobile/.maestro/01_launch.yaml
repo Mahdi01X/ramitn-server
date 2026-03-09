@@ -1,0 +1,16 @@
+# Flow 1: App Launch and Navigation
+# Verifies the app launches, splash completes, and home screen appears
+appId: com.ramitn.app
+name: "App Launch & Home Screen"
+---
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Splash screen should auto-navigate to home
+- assertVisible: "Jouer Hors-ligne"
+- assertVisible: "Jouer En ligne"
+- assertVisible: "Règles du jeu"
+
+# Verify logo/title area
+- assertVisible: "RamiTN"

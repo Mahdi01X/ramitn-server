@@ -37,38 +37,38 @@ export function isValidRun(cards: Card[], config: GameConfig): boolean {
   const suit = normals[0].suit!;
   if (!normals.every(c => c.suit === suit)) return false;
 
-  // Sort by rank
-  const sorted = [...normals].sort((a, b) => a.rank! - b.rank!);
+  // Try Ace as low (rank 1) first
+  if (tryRunWithAceValue(normals, jokers.length, false)) return true;
+
+  // If any Ace present, retry with Ace as high (rank 14)
+  const hasAce = normals.some(c => c.rank === Rank.Ace);
+  if (hasAce && tryRunWithAceValue(normals, jokers.length, true)) return true;
+
+  return false;
+}
+
+function tryRunWithAceValue(normals: Card[], jokerCount: number, aceHigh: boolean): boolean {
+  const getRank = (c: Card) => aceHigh && c.rank === Rank.Ace ? 14 : c.rank!;
+
+  const sorted = [...normals].sort((a, b) => getRank(a) - getRank(b));
 
   // Check for duplicates
   for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i].rank === sorted[i - 1].rank) return false;
+    if (getRank(sorted[i]) === getRank(sorted[i - 1])) return false;
   }
 
   // Check consecutive with jokers filling gaps
-  const minRank = sorted[0].rank!;
-  const maxRank = sorted[sorted.length - 1].rank!;
-  const span = maxRank - minRank + 1;
-
-  // The span should equal normal cards + jokers used to fill
-  if (span > normals.length + jokers.length) return false;
-  // Total cards should match span (no extra jokers appended beyond the run)
-  // Actually jokers can extend a run beyond the normal card bounds
-  // So total cards = normals.length + jokers.length, span <= total cards
-  if (cards.length < 3) return false;
-
-  // More precise: try to place all cards in a consecutive sequence
-  return canFormConsecutiveRun(sorted, jokers.length);
+  return canFormConsecutiveRun(sorted.map(c => getRank(c)), jokerCount);
 }
 
-function canFormConsecutiveRun(sortedNormals: Card[], jokerCount: number): boolean {
-  if (sortedNormals.length === 0) return jokerCount >= 3;
+function canFormConsecutiveRun(sortedRanks: number[], jokerCount: number): boolean {
+  if (sortedRanks.length === 0) return jokerCount >= 3;
 
   let jokersUsed = 0;
-  let prev = sortedNormals[0].rank!;
+  let prev = sortedRanks[0];
 
-  for (let i = 1; i < sortedNormals.length; i++) {
-    const curr = sortedNormals[i].rank!;
+  for (let i = 1; i < sortedRanks.length; i++) {
+    const curr = sortedRanks[i];
     const gap = curr - prev - 1;
     if (gap < 0) return false; // duplicate
     jokersUsed += gap;
@@ -88,11 +88,66 @@ export function validateMeld(cards: Card[], config: GameConfig): MeldType | null
 
 /** Calculate the point value of a meld (for opening threshold) */
 export function calculateMeldPoints(meld: Meld, config: GameConfig): number {
+  if (meld.type === MeldType.Run) {
+    return calculateRunMeldPoints(meld, config);
+  }
   let total = 0;
   for (const card of meld.cards) {
     total += getCardPoints(card, config);
   }
   return total;
+}
+
+/**
+ * Calculate run meld points with context-aware Ace value:
+ * A-2-3 → Ace = 1 (low); Q-K-A → Ace = 11 (high)
+ * Jokers take the point value of the position they fill.
+ */
+function calculateRunMeldPoints(meld: Meld, config: GameConfig): number {
+  const normals = meld.cards.filter(c => !c.isJoker);
+  const jokerCount = meld.cards.length - normals.length;
+
+  if (normals.length === 0) {
+    return jokerCount * config.jokerValue;
+  }
+
+  const hasAce = normals.some(c => c.rank === Rank.Ace);
+
+  // Determine if Ace is high: if any non-ace normal card has rank >= Queen
+  let aceIsHigh = false;
+  if (hasAce) {
+    const nonAceRanks = normals.filter(c => c.rank !== Rank.Ace).map(c => c.rank!);
+    aceIsHigh = nonAceRanks.length > 0 && Math.max(...nonAceRanks) >= Rank.Queen;
+  }
+
+  const getRank = (c: Card) => aceIsHigh && c.rank === Rank.Ace ? 14 : c.rank!;
+
+  // Build sorted normal rank values
+  const sortedRanks = normals.map(c => getRank(c)).sort((a, b) => a - b);
+
+  // Build full sequence of rank positions (fill joker gaps)
+  const minRank = sortedRanks[0];
+  const positions: number[] = [];
+  let idx = 0;
+  let r = minRank;
+  while (positions.length < meld.cards.length) {
+    if (idx < sortedRanks.length && sortedRanks[idx] === r) {
+      positions.push(r);
+      idx++;
+    } else {
+      positions.push(r); // joker fills this position
+    }
+    r++;
+  }
+
+  // Sum values for each position
+  const rankPointValue = (rank: number): number => {
+    if (rank === 14) return config.aceHighValue; // Ace high
+    if (rank >= Rank.Jack) return 10; // J/Q/K
+    return rank; // 1-10
+  };
+
+  return positions.reduce((sum, pos) => sum + rankPointValue(pos), 0);
 }
 
 /** Get point value of a single card */

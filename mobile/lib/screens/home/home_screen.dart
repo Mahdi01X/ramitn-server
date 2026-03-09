@@ -44,6 +44,7 @@ class HomeScreen extends ConsumerWidget {
 
                     // ─── Menu Buttons ────────────────────────
                     _PremiumMenuCard(
+                      key: const ValueKey('btn_offline'),
                       icon: Icons.casino_rounded,
                       emoji: '🎲',
                       label: 'Jouer Hors-ligne',
@@ -53,6 +54,7 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 14),
                     _PremiumMenuCard(
+                      key: const ValueKey('btn_online'),
                       icon: Icons.public_rounded,
                       emoji: '🌐',
                       label: 'Jouer En ligne',
@@ -62,6 +64,7 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 14),
                     _PremiumMenuCard(
+                      key: const ValueKey('btn_rules'),
                       icon: Icons.auto_stories_rounded,
                       emoji: '📖',
                       label: 'Règles du jeu',
@@ -179,6 +182,7 @@ class _PremiumMenuCard extends StatefulWidget {
   final VoidCallback onTap;
 
   const _PremiumMenuCard({
+    super.key,
     required this.icon,
     required this.emoji,
     required this.label,
