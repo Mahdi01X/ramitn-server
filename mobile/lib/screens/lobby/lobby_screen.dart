@@ -96,7 +96,7 @@ class LobbyScreen extends ConsumerWidget {
                   child: ListView.builder(
                     itemCount: room.players.length,
                     itemBuilder: (_, i) {
-                      final p = room.players[i];
+                      final RoomPlayerInfo p = room.players[i] as RoomPlayerInfo;
                       final isHost = i == 0;
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
@@ -151,12 +151,13 @@ class LobbyScreen extends ConsumerWidget {
                 Builder(builder: (context) {
                   final socket = ref.read(socketServiceProvider);
                   final myId = socket.playerId;
-                  final isHost = room.players.isNotEmpty && room.players.first.id == myId;
-                  final myPlayerMatches = room.players.where((p) => p.id == myId);
+                  final List<RoomPlayerInfo> typedPlayers = room.players.map<RoomPlayerInfo>((p) => p as RoomPlayerInfo).toList();
+                  final isHost = typedPlayers.isNotEmpty && typedPlayers.first.id == myId;
+                  final myPlayerMatches = typedPlayers.where((RoomPlayerInfo p) => p.id == myId);
                   final myPlayer = myPlayerMatches.isNotEmpty ? myPlayerMatches.first : null;
                   final iAmReady = myPlayer?.ready ?? false;
-                  final allReady = room.players.every((p) => p.ready);
-                  final canStart = isHost && room.players.length >= 2 && allReady;
+                  final allReady = typedPlayers.every((RoomPlayerInfo p) => p.ready);
+                  final canStart = isHost && typedPlayers.length >= 2 && allReady;
 
                   if (isHost) {
                     // Host: only show Start button
