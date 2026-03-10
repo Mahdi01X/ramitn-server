@@ -459,15 +459,11 @@ class OfflineGameEngine {
     final card = player.hand.firstWhere((c) => c.id == cardId,
         orElse: () => throw Exception('Card not in hand'));
 
-    // Penalty: drew from discard pile but didn't open → 100 pts
+    // Penalty: drew from discard pile but didn't open → 100 pts penalty added
     if (player.drewFromDiscard && !player.hasOpened) {
-      player.hand.removeWhere((c) => c.id == cardId);
-      state.discardPile.add(card);
-      // Apply 100pts penalty (accumulated — will be added at _endRound)
-      player.score += 100;
+      player.score += 100; // accumulate penalty
       player.drewFromDiscard = false;
-      _advanceTurn();
-      return;
+      // Don't end round — just penalize and continue
     }
 
     player.hand.removeWhere((c) => c.id == cardId);
@@ -542,7 +538,8 @@ class OfflineGameEngine {
     if (state.turnStep != LocalTurnStep.draw) return false;
 
     // Feature 4: Smart draw — check if top discard is useful
-    if (state.discardPile.isNotEmpty) {
+    // Don't draw from discard if not opened yet (100 pts penalty risk)
+    if (state.discardPile.isNotEmpty && player.hasOpened) {
       final topCard = state.discardPile.last;
       // Don't draw discard if it's a duplicate (Feature 8)
       if (!isDiscardDuplicate()) {
@@ -897,12 +894,15 @@ class OfflineGameEngine {
   }
 
   void _endRound(String winnerId) {
-    // Calculate scores: card points + any accumulated penalties (e.g. 100pts for discard fail)
+    // Calculate scores for each player
     for (final player in state.players) {
       if (player.hand.isEmpty) {
-        // Winner: no card points, but keep any penalty from this round
-        // (winner shouldn't have penalty, but just in case)
+        // Winner: 0 points (keep any accumulated score if it exists, but typically 0)
+      } else if (!player.hasOpened) {
+        // Never opened → minimum 100 pts penalty (or more if accumulated from discard penalties)
+        player.score = player.score < 100 ? 100 : player.score;
       } else {
+        // Opened but has remaining cards → count card points + any accumulated penalties
         player.score += player.hand.fold(0, (sum, c) => sum + getCardPoints(c, state.config));
       }
       player.totalScore += player.score;

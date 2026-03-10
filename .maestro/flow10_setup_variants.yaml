@@ -1,0 +1,34 @@
+appId: com.ramitunisien.rami_tunisien
+---
+# Flow 10: Offline Setup Variants — Test different player configurations
+# Validates: stepper controls work, 4-player game starts
+
+- launchApp
+- tapOn: "Jouer Hors-ligne"
+- wait: 500
+
+# Default: 2 humans, 0 bots
+# Change to 2 humans + 2 bots
+- tapOn:
+    text: "+"
+    index: 1
+- tapOn:
+    text: "+"
+    index: 1
+- wait: 300
+
+# Verify summary shows 4 players
+- takeScreenshot: flow10_4_player_setup
+
+# Start game
+- tapOn: "Lancer la partie"
+- wait: 1000
+
+# Should show frich with cards
+- assertVisible: "Frich"
+- tapOn: "Non, on joue"
+- wait: 2000
+
+# 4-player game should show multiple opponents
+- takeScreenshot: flow10_4_player_game
+

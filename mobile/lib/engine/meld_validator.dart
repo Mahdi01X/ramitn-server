@@ -100,9 +100,10 @@ int calculateMeldPoints(List<Card> cards, GameConfig config) {
 
   if (type == MeldType.set) {
     // Set: all same rank. Joker replaces that same rank.
-    final rank = normals.first.rank!.value;
-    final perCard = rank == 1 ? 10 : _rankPoints(rank, config); // Ace in set = 10 (common rami rule)
-    return cards.length * perCard;
+    // Joker takes the value of the rank it replaces, not 30.
+    final realCards = cards.where((c) => !c.isJoker).toList();
+    final rankValue = realCards.isNotEmpty ? getCardPoints(realCards.first, config) : config.jokerValue;
+    return cards.length * rankValue;
   }
 
   // Run: consecutive in same suit. Jokers fill gaps.

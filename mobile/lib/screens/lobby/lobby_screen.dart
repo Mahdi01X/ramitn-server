@@ -127,7 +127,7 @@ class LobbyScreen extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  isHost ? 'Hôte' : (p.ready ? 'Prêt ✓' : 'En attente'),
+                                  isHost ? 'Hôte ✓' : (p.ready ? 'Prêt ✓' : 'En attente'),
                                   style: AppTextStyles.bodySmall.copyWith(
                                     color: isHost ? CafeTunisienColors.amber : (p.ready ? const Color(0xFF4CAF50) : Colors.white38),
                                   ),
@@ -156,7 +156,9 @@ class LobbyScreen extends ConsumerWidget {
                   final myPlayerMatches = typedPlayers.where((RoomPlayerInfo p) => p.id == myId);
                   final myPlayer = myPlayerMatches.isNotEmpty ? myPlayerMatches.first : null;
                   final iAmReady = myPlayer?.ready ?? false;
-                  final allReady = typedPlayers.every((RoomPlayerInfo p) => p.ready);
+                  // Host is always considered ready — only check non-host players
+                  final nonHostPlayers = typedPlayers.where((RoomPlayerInfo p) => p.id != typedPlayers.first.id);
+                  final allReady = nonHostPlayers.every((RoomPlayerInfo p) => p.ready);
                   final canStart = isHost && typedPlayers.length >= 2 && allReady;
 
                   if (isHost) {

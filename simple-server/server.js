@@ -294,7 +294,7 @@ gameNs.on('connection', (socket) => {
 
     const room = {
       id: roomId, code, hostId: playerId, numPlayers,
-      players: [{ id: playerId, name: playerName, socketId: socket.id, ready: false }],
+      players: [{ id: playerId, name: playerName, socketId: socket.id, ready: true }],
       gameStarted: false, game: null, createdAt: Date.now(),
     };
 
@@ -357,6 +357,8 @@ gameNs.on('connection', (socket) => {
     if (!roomId) return;
     const room = rooms.get(roomId);
     if (!room) return;
+    // Host is always ready — don't toggle
+    if (playerId === room.hostId) return;
     const player = room.players.find(p => p.id === playerId);
     if (player) {
       player.ready = !player.ready;
@@ -377,7 +379,12 @@ gameNs.on('connection', (socket) => {
     if (!room) return;
     if (room.hostId !== playerId) { socket.emit('game_error', { message: 'Seul l\'hôte peut démarrer' }); return; }
     if (room.players.length < 2) { socket.emit('game_error', { message: 'Il faut au moins 2 joueurs' }); return; }
-    if (!room.players.every(p => p.ready)) { socket.emit('game_error', { message: 'Tous les joueurs ne sont pas prêts' }); return; }
+    // Auto-mark host as ready (host is always considered ready)
+    const hostPlayer = room.players.find(p => p.id === room.hostId);
+    if (hostPlayer) hostPlayer.ready = true;
+    // Only check non-host players
+    const allNonHostReady = room.players.every(p => p.id === room.hostId || p.ready);
+    if (!allNonHostReady) { socket.emit('game_error', { message: 'Tous les joueurs ne sont pas prêts' }); return; }
 
     // Create game state
     room.gameStarted = true;

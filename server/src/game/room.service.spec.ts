@@ -85,7 +85,7 @@ describe('RoomService', () => {
     const result2 = service.tryMatchmaking(2);
     expect(result2).not.toBeNull();
     expect(result2!.players).toHaveLength(2);
-    expect(result2.room.players).toHaveLength(2);
+    expect(result2!.room.players).toHaveLength(2);
   });
 });
 

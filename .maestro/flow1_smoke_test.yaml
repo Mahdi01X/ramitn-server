@@ -1,0 +1,49 @@
+appId: com.karim.rami_tunisien
+---
+# Flow 1: Smoke Test — Home → Offline Setup → Start Game vs Bot
+# Validates: app launches, navigation works, game starts, cards are visible
+
+- launchApp
+
+# Home screen should show title and buttons
+- assertVisible: "Jouer Hors-ligne"
+- assertVisible: "Jouer En ligne"
+- assertVisible: "Règles du jeu"
+
+# Navigate to offline setup
+- tapOn: "Jouer Hors-ligne"
+
+# Offline setup screen
+- assertVisible: "Nouvelle Partie"
+- assertVisible: "Humains"
+- assertVisible: "Bots"
+
+# Set 1 human + 1 bot (tap - on humans to go to 1, tap + on bots to go to 1)
+# Default is 2 humans 0 bots — change to 1 human 1 bot
+- tapOn:
+    text: "-"
+    index: 0
+# Now 1 human, need 1 bot
+- tapOn:
+    text: "+"
+    index: 1
+
+# Start the game
+- tapOn: "Lancer la partie"
+
+# Frich vote screen should appear
+- assertVisible: "Frich"
+
+# Vote "Non, on joue !"
+- tapOn: "Non, on joue"
+
+# Game table should now be visible with cards
+# Wait for the game to render
+- wait: 2000
+
+# Verify game UI elements are present
+- assertVisible: "Piochez une carte"
+
+# Take a screenshot for visual verification
+- takeScreenshot: flow1_game_started
+

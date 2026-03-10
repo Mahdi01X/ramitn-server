@@ -18,7 +18,7 @@ export class RoomService {
       id,
       code,
       hostId,
-      players: [{ id: hostId, name: hostName, ready: false }],
+      players: [{ id: hostId, name: hostName, ready: true }],  // Host is auto-ready
       config: { ...DEFAULT_CONFIG, ...config },
       isPrivate: true,
       gameId: null,
@@ -76,7 +76,8 @@ export class RoomService {
 
   allReady(roomId: string): boolean {
     const room = this.rooms.get(roomId)!;
-    return room.players.length >= 2 && room.players.every(p => p.ready);
+    // Host is always ready — only check non-host players
+    return room.players.length >= 2 && room.players.every(p => p.id === room.hostId || p.ready);
   }
 
   getRoom(roomId: string): Room | undefined {

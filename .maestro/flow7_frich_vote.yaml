@@ -1,0 +1,33 @@
+appId: com.ramitunisien.rami_tunisien
+---
+# Flow 7: Frich Vote — Test accepting frich (reshuffle)
+# Validates: frich screen shows cards, vote buttons work
+
+- launchApp
+
+# Start game vs bot
+- tapOn: "Jouer Hors-ligne"
+- tapOn:
+    text: "-"
+    index: 0
+- tapOn:
+    text: "+"
+    index: 1
+- tapOn: "Lancer la partie"
+- wait: 1000
+
+# Frich vote screen should show
+- assertVisible: "Frich"
+- assertVisible: "Oui, Frich"
+- assertVisible: "Non, on joue"
+
+# Take screenshot showing cards during frich vote
+- takeScreenshot: flow7_frich_with_cards
+
+# Accept frich
+- tapOn: "Oui, Frich"
+- wait: 2000
+
+# Should either show frich again (if bot also agreed) or start game
+- takeScreenshot: flow7_after_frich_vote
+

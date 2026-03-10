@@ -91,11 +91,10 @@ export function calculateMeldPoints(meld: Meld, config: GameConfig): number {
   if (meld.type === MeldType.Run) {
     return calculateRunMeldPoints(meld, config);
   }
-  let total = 0;
-  for (const card of meld.cards) {
-    total += getCardPoints(card, config);
-  }
-  return total;
+  // Set: all same rank. Joker takes the value of the rank it replaces.
+  const normals = meld.cards.filter(c => !c.isJoker);
+  const rankValue = normals.length > 0 ? getCardPoints(normals[0], config) : config.jokerValue;
+  return meld.cards.length * rankValue;
 }
 
 /**

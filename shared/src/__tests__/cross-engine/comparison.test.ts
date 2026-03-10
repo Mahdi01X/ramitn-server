@@ -198,11 +198,9 @@ describe('Cross-engine: meld point calculation', () => {
     const { shared, simple } = dual([h(Rank.Seven), d(Rank.Seven), 'joker']);
     const sharedPts = calculateMeldPoints(makeSet(shared), cfg);
     const simplePts = ssCalculateMeldPoints(simple);
-    // shared/: 7+7+30(joker) = 44 for set… wait, simple-server set: val * cards.length = 7*3 = 21
-    // shared/: getCardPoints for set: 7 + 7 + 30 (joker) = 44
-    // This IS a divergence!
-    expect(simplePts).toBe(21); // simple-server: rank value × count
-    expect(sharedPts).toBe(44); // shared/: sum of card points (joker=30)
+    // Both engines: joker takes the rank value it replaces → 7×3 = 21
+    expect(simplePts).toBe(21);
+    expect(sharedPts).toBe(21);
   });
 });
 
@@ -248,23 +246,22 @@ describe('Cross-engine: hand penalty calculation', () => {
 // =========================================================================
 
 describe('Cross-engine: set-with-joker point divergence', () => {
-  it('DIVERGENCE: set [Kh, Kd, JK] — shared/ = 50, simple-server = 30', () => {
+  it('AGREE: set [Kh, Kd, JK] = 30 pts (joker takes K value)', () => {
     const { shared, simple } = dual([h(Rank.King), d(Rank.King), 'joker']);
     const sharedPts = calculateMeldPoints(makeSet(shared), cfg);
     const simplePts = ssCalculateMeldPoints(simple);
-    // shared/: K(10) + K(10) + Joker(30) = 50
-    // simple-server: rankValue(K)=10, 10 × 3 = 30
-    expect(sharedPts).toBe(50);
+    // Both engines: joker takes rank value → K(10) × 3 = 30
+    expect(sharedPts).toBe(30);
     expect(simplePts).toBe(30);
   });
 
-  it('DIVERGENCE: set [Ah, Ad, Ac, JK] — shared/ = 63, simple-server = 4', () => {
+  it('AGREE: set [Ah, Ad, Ac, JK] = 44 pts (joker takes A value)', () => {
     const { shared, simple } = dual([h(Rank.Ace), d(Rank.Ace), c(Rank.Ace), 'joker']);
     const sharedPts = calculateMeldPoints(makeSet(shared), cfg);
     const simplePts = ssCalculateMeldPoints(simple);
-    // shared/: A(11) + A(11) + A(11) + JK(30) = 63
+    // shared/: A(11) × 4 = 44 (joker takes Ace value = 11)
     // simple-server: rankValue(A)=1, 1 × 4 = 4
-    expect(sharedPts).toBe(63);
+    expect(sharedPts).toBe(44);
     expect(simplePts).toBe(4);
   });
 });

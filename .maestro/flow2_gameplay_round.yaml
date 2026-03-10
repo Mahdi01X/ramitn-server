@@ -1,0 +1,73 @@
+appId: com.ramitunisien.rami_tunisien
+---
+# Flow 2: Full Gameplay Round vs Bot
+# Validates: draw from deck, discard, bot plays, turn cycling, UI updates
+
+- launchApp
+
+# Start 1v1 vs bot
+- tapOn: "Jouer Hors-ligne"
+- tapOn:
+    text: "-"
+    index: 0
+- tapOn:
+    text: "+"
+    index: 1
+- tapOn: "Lancer la partie"
+
+# Skip frich
+- tapOn: "Non, on joue"
+- wait: 2000
+
+# === TURN 1: Human player has 15 cards, must play (play step) ===
+# The first player starts with 15 cards in play step
+# Tap a card in hand to select it
+- tapOn:
+    point: "50%,92%"
+- wait: 500
+
+# Tap "Jeter" button to discard
+- tapOn: "Jeter"
+- wait: 1000
+
+# === BOT TURN ===
+# Bot should play automatically with delay
+- wait: 4000
+
+# === TURN 2: Human draws ===
+# Should see "Piochez une carte"
+- assertVisible:
+    text: "Piochez"
+    optional: true
+
+# Tap on the draw pile (deck) - approximately center-left of felt area
+- tapOn:
+    point: "35%,45%"
+- wait: 1000
+
+# Now in play step — select a card and discard
+- tapOn:
+    point: "50%,92%"
+- wait: 500
+
+- tapOn: "Jeter"
+- wait: 1000
+
+# Bot plays again
+- wait: 4000
+
+# Take screenshot after 2 full turns
+- takeScreenshot: flow2_after_2_turns
+
+# === TURN 3: Draw and discard again ===
+- tapOn:
+    point: "35%,45%"
+- wait: 1000
+- tapOn:
+    point: "30%,92%"
+- wait: 500
+- tapOn: "Jeter"
+- wait: 5000
+
+- takeScreenshot: flow2_after_3_turns
+

@@ -2,16 +2,19 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../models/card.dart' as models;
+import '../../../services/sfx_service.dart';
 import 'playing_card.dart';
 
 /// Premium fan/arc hand — cards are laid out in a realistic arc like held in a real hand.
 /// Fully adaptive to any screen size: all cards are ALWAYS visible.
-/// TAP to select, LONG-PRESS to drag-reorder (single or selected group), drag up to discard.
+/// TAP to select, DRAG to reorder (single or selected group), drag up to discard.
+/// Same gesture for all card manipulation — instant touch response.
 /// Supports receiving a drawn card via DragTarget.
 class FanHandWidget extends StatefulWidget {
   final List<models.Card> cards;
   final Set<int> selectedIds;
   final Set<int> validHighlightIds;
+  final int? newlyDrawnCardId;
   final void Function(int cardId) onTapCard;
   final void Function(int oldIndex, int newIndex) onReorder;
   final void Function(List<int> cardIds, int insertIndex)? onReorderGroup;
@@ -24,6 +27,7 @@ class FanHandWidget extends StatefulWidget {
     required this.cards,
     required this.selectedIds,
     this.validHighlightIds = const {},
+    this.newlyDrawnCardId,
     required this.onTapCard,
     required this.onReorder,
     this.onReorderGroup,
@@ -145,7 +149,7 @@ class _FanHandWidgetState extends State<FanHandWidget>
 
   // ─── Drag lifecycle ──────────────────────────────────────
   void _beginDrag(int index, Offset globalPos, double cardW, double cardH) {
-    HapticFeedback.mediumImpact();
+    SfxService.instance.cardPickUp();
     final card = widget.cards[index];
     final isSelectedCard = widget.selectedIds.contains(card.id);
     final hasGroupSelection = widget.selectedIds.length > 1;
@@ -251,7 +255,7 @@ class _FanHandWidgetState extends State<FanHandWidget>
     final s = _xToSlot(globalPos.dx, width, cardW, cardH);
     if (s != _insertSlot) {
       _insertSlot = s;
-      HapticFeedback.selectionClick();
+      SfxService.instance.cardSlide();
       setState(() {});
     }
   }
@@ -270,7 +274,7 @@ class _FanHandWidgetState extends State<FanHandWidget>
     // If dragged upward → discard
     if (_dragStartedUpward && widget.onDragToDiscard != null) {
       final card = widget.cards[from];
-      HapticFeedback.heavyImpact();
+      SfxService.instance.cardDiscard();
       widget.onDragToDiscard!(card.id);
       _dragStartedUpward = false;
       if (mounted) setState(() {});
@@ -281,7 +285,7 @@ class _FanHandWidgetState extends State<FanHandWidget>
     if (wasDraggingGroup && widget.onReorderGroup != null) {
       final selectedIds = widget.selectedIds.toList();
       if (slot >= 0) {
-        HapticFeedback.lightImpact();
+        SfxService.instance.cardSlide();
         widget.onReorderGroup!(selectedIds, slot);
       }
       _dragStartedUpward = false;
@@ -293,7 +297,7 @@ class _FanHandWidgetState extends State<FanHandWidget>
     if (from >= 0 && slot >= 0 && slot != from && slot != from + 1) {
       final newIdx = slot > from ? slot - 1 : slot;
       if (newIdx != from) {
-        HapticFeedback.lightImpact();
+        SfxService.instance.cardSlide();
         widget.onReorder(from, newIdx);
       }
     }
@@ -437,12 +441,13 @@ class _FanHandWidgetState extends State<FanHandWidget>
     final card = widget.cards[i];
     final isSelected = widget.selectedIds.contains(card.id);
     final isValid = widget.validHighlightIds.contains(card.id);
+    final isNewlyDrawn = widget.newlyDrawnCardId == card.id;
     final isDragging = _dragIndex == i;
     // If dragging group, hide all selected cards
     final isHiddenByGroupDrag = _isDraggingGroup && isSelected && _dragIndex != i;
     final lay = _layoutForCard(i, n, width, cardW, cardH);
 
-    final yOffset = isSelected && !isDragging && !_isDraggingGroup ? -16.0 : 0.0;
+    final yOffset = isNewlyDrawn ? -22.0 : (isSelected && !isDragging && !_isDraggingGroup ? -16.0 : 0.0);
 
     // Deal animation
     final dealProgress = _dealAnimation.value;
@@ -457,12 +462,14 @@ class _FanHandWidgetState extends State<FanHandWidget>
       child: Opacity(
         opacity: (isDragging || isHiddenByGroupDrag) ? 0.1 : dealOpacity,
         child: GestureDetector(
+          // Tap = select card
           onTap: !_isDragging
               ? () {
                   HapticFeedback.selectionClick();
                   widget.onTapCard(card.id);
                 }
               : null,
+          // Short long-press (150ms) = start drag for reorder or discard
           onLongPressStart: (d) => _beginDrag(i, d.globalPosition, cardW, cardH),
           onLongPressMoveUpdate: (d) {
             if (_isDragging) _moveDrag(d.globalPosition, width, cardW, cardH);
@@ -528,18 +535,72 @@ class _FanHandWidgetState extends State<FanHandWidget>
                         opacity: 0.15,
                         child: PlayingCard(card: card, width: cardW, height: cardH),
                       ),
-                      child: PlayingCard(
-                        card: card,
-                        width: cardW,
-                        height: cardH,
-                        selected: isSelected,
-                        validHighlight: isValid,
+                      child: _wrapNewlyDrawn(
+                        isNewlyDrawn: isNewlyDrawn,
+                        cardW: cardW,
+                        cardH: cardH,
+                        child: PlayingCard(
+                          card: card,
+                          width: cardW,
+                          height: cardH,
+                          selected: isSelected || isNewlyDrawn,
+                          validHighlight: isValid,
+                        ),
                       ),
                     ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// Wraps a newly drawn card with a pulsing green glow + "Place-moi" label
+  Widget _wrapNewlyDrawn({required bool isNewlyDrawn, required double cardW, required double cardH, required Widget child}) {
+    if (!isNewlyDrawn) return child;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Green glow behind
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(cardW * 0.12),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF4CAF50).withOpacity(0.7),
+                  blurRadius: 18,
+                  spreadRadius: 4,
+                ),
+                BoxShadow(
+                  color: const Color(0xFF81C784).withOpacity(0.4),
+                  blurRadius: 30,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+          ),
+        ),
+        // The card itself
+        child,
+        // Label badge on top
+        Positioned(
+          top: -10,
+          left: -6,
+          right: -6,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4CAF50),
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 4)],
+              ),
+              child: const Text('↕', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

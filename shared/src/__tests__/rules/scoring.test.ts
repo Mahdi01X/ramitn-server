@@ -57,6 +57,7 @@ describe('Round Scores', () => {
         makePlayer({
           id: 'p2',
           hand: [card(Rank.King, Suit.Hearts, 1), card(Rank.Ace, Suit.Spades, 2)],
+          hasOpened: true, // opened but has remaining cards
         }),
       ],
     });
@@ -64,6 +65,23 @@ describe('Round Scores', () => {
     const scores = calculateRoundScores(state);
     expect(scores['p1']).toBe(0);
     expect(scores['p2']).toBe(21); // 10 + 11
+  });
+
+  test('player who never opened gets 100 pts flat penalty', () => {
+    const state = makeGameState({
+      players: [
+        makePlayer({ id: 'p1', hand: [] }), // winner
+        makePlayer({
+          id: 'p2',
+          hand: [card(Rank.King, Suit.Hearts, 1), card(Rank.Ace, Suit.Spades, 2)],
+          hasOpened: false,
+        }),
+      ],
+    });
+
+    const scores = calculateRoundScores(state);
+    expect(scores['p1']).toBe(0);
+    expect(scores['p2']).toBe(100); // flat penalty — never opened
   });
 });
 

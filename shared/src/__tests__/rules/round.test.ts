@@ -104,6 +104,7 @@ describe('Round End', () => {
         makePlayer({
           id: 'p2',
           hand: [card(Rank.King, Suit.Spades, 10), card(Rank.Ace, Suit.Diamonds, 11)],
+          hasOpened: true, // opened but has remaining cards
         }),
       ],
       currentPlayerIndex: 0,

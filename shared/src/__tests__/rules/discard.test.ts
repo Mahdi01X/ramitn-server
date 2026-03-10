@@ -36,8 +36,10 @@ describe('Discard Draw Penalty (+100)', () => {
     // P2 discards without opening → should get penalty
     state = applyAction(state, { type: 'discard', playerId: 'p2', cardId: 20 });
 
-    // P2 should have +100 penalty
-    expect(state.players[1].totalScore).toBe(100);
+    // P2 should have +100 penalty accumulated in score (added to totalScore at round end)
+    expect(state.players[1].score).toBe(100);
+    // Round should NOT have ended — game continues
+    expect(state.phase).toBe(GamePhase.PlayerTurn);
   });
 
   test('drawing from discard with opening gives NO penalty', () => {

@@ -1,0 +1,35 @@
+appId: com.ramitunisien.rami_tunisien
+---
+# Flow 6: Quit Game Dialog — Test quit confirmation
+# Validates: back button shows dialog, can stay or quit
+
+- launchApp
+
+# Start game vs bot
+- tapOn: "Jouer Hors-ligne"
+- tapOn:
+    text: "-"
+    index: 0
+- tapOn:
+    text: "+"
+    index: 1
+- tapOn: "Lancer la partie"
+- tapOn: "Non, on joue"
+- wait: 2000
+
+# Tap back arrow in game header (top-left)
+- tapOn:
+    point: "5%,12%"
+- wait: 1000
+
+# Quit dialog should appear
+- assertVisible: "Quitter la partie"
+- takeScreenshot: flow6_quit_dialog
+
+# Tap "Rester" to stay in game
+- tapOn: "Rester"
+- wait: 500
+
+# Should still be in game
+- takeScreenshot: flow6_still_in_game
+

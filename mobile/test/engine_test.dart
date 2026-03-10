@@ -293,6 +293,7 @@ void main() {
         ],
       );
       engine.startRound(seed: 42);
+      engine.skipFrich(); // Skip frich vote phase to proceed to play
 
       expect(engine.state.phase, LocalGamePhase.playerTurn);
       expect(engine.state.players[0].hand.length, 15); // First player gets 15
@@ -310,6 +311,7 @@ void main() {
         ],
       );
       engine.startRound(seed: 42);
+      engine.skipFrich(); // Skip frich vote phase
 
       // P1 starts with 15 cards at play step — must discard
       expect(engine.state.turnStep, LocalTurnStep.play);
@@ -336,6 +338,7 @@ void main() {
         ],
       );
       engine.startRound(seed: 42);
+      engine.skipFrich(); // Skip frich vote phase
 
       // P1 turn: already at play step with 15 cards, just discard
       engine.discard(engine.state.players[0].hand.first.id);
@@ -360,6 +363,7 @@ void main() {
         ],
       );
       engine.startRound(seed: 42);
+      engine.skipFrich(); // Skip frich vote phase
 
       // P1 discards
       final discardedCard = engine.state.players[0].hand.last;

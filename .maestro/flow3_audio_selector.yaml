@@ -1,0 +1,60 @@
+appId: com.ramitunisien.rami_tunisien
+---
+# Flow 3: Audio Selector — Test music toggle and radio selection
+# Validates: bottom sheet opens, options visible, can switch modes
+
+- launchApp
+
+# Start a game vs bot
+- tapOn: "Jouer Hors-ligne"
+- tapOn:
+    text: "-"
+    index: 0
+- tapOn:
+    text: "+"
+    index: 1
+- tapOn: "Lancer la partie"
+- tapOn: "Non, on joue"
+- wait: 2000
+
+# Tap the music/radio button in the header (top-right area)
+- tapOn:
+    point: "88%,12%"
+- wait: 1000
+
+# Audio bottom sheet should appear
+- assertVisible: "Audio"
+- assertVisible: "Audio off"
+- assertVisible: "Yasmina"
+- assertVisible: "Radios Tunisiennes"
+
+# Take screenshot of audio selector
+- takeScreenshot: flow3_audio_selector
+
+# Tap on "Audio off"
+- tapOn: "Audio off"
+- wait: 500
+
+# Tap on "Yasmina" to re-enable music
+- tapOn: "Yasmina"
+- wait: 500
+
+# Scroll down to see radio stations
+- scroll:
+    point: "50%,70%"
+    direction: "DOWN"
+- wait: 500
+
+# Tap on first radio station (Mosaique FM)
+- tapOn:
+    text: "Mosaïque FM"
+    index: 0
+- wait: 3000
+
+# Take screenshot with radio playing
+- takeScreenshot: flow3_radio_playing
+
+# Close bottom sheet
+- back
+- wait: 500
+

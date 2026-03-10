@@ -413,7 +413,7 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          i == 0 ? 'Hôte' : (typedPlayers[i].ready ? 'Prêt ✓' : 'En attente'),
+                          i == 0 ? 'Hôte ✓' : (typedPlayers[i].ready ? 'Prêt ✓' : 'En attente'),
                           style: AppTextStyles.bodySmall.copyWith(
                             color: i == 0 ? CafeTunisienColors.amber : (typedPlayers[i].ready ? const Color(0xFF4CAF50) : Colors.white38),
                             fontSize: 10,
@@ -455,8 +455,11 @@ class _QuickOnlineScreenState extends ConsumerState<QuickOnlineScreen> {
           final myPlayerMatches = typedPlayers.where((RoomPlayerInfo p) => p.id == myId);
           final myPlayer = myPlayerMatches.isNotEmpty ? myPlayerMatches.first : null;
           final iAmReady = myPlayer?.ready ?? false;
-          final allReady = typedPlayers.every((RoomPlayerInfo p) => p.ready);
-          final canStart = isHost && typedPlayers.length >= 2 && allReady;
+          // Host is implicitly ready — only check non-host players
+          final nonHostPlayers = typedPlayers.where((p) => p.id != typedPlayers.first.id).toList();
+          final allOthersReady = nonHostPlayers.isNotEmpty && nonHostPlayers.every((RoomPlayerInfo p) => p.ready);
+          final canStart = isHost && typedPlayers.length >= 2 && allOthersReady;
+          print('🔍 DEBUG LOBBY: myId=$myId, isHost=$isHost, players=${typedPlayers.map((p) => "${p.name}(${p.id},ready=${p.ready})").toList()}, canStart=$canStart, allOthersReady=$allOthersReady');
 
           return Column(
             children: [

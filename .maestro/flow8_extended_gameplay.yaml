@@ -1,0 +1,87 @@
+appId: com.ramitunisien.rami_tunisien
+---
+# Flow 8: Extended Gameplay — Multiple turns, card selection, staging melds
+# Validates: card selection, meld detection, action bar buttons
+
+- launchApp
+
+# Start 1v1 vs bot
+- tapOn: "Jouer Hors-ligne"
+- tapOn:
+    text: "-"
+    index: 0
+- tapOn:
+    text: "+"
+    index: 1
+- tapOn: "Lancer la partie"
+- tapOn: "Non, on joue"
+- wait: 2000
+
+# === PLAY 5 TURNS ===
+# Turn 1: Discard (starts with 15 cards in play step)
+- tapOn:
+    point: "50%,92%"
+- wait: 300
+- tapOn: "Jeter"
+- wait: 4000
+
+# Turn 2
+- tapOn:
+    point: "35%,45%"
+- wait: 500
+- tapOn:
+    point: "40%,92%"
+- wait: 300
+- tapOn: "Jeter"
+- wait: 4000
+
+# Turn 3
+- tapOn:
+    point: "35%,45%"
+- wait: 500
+- tapOn:
+    point: "60%,92%"
+- wait: 300
+- tapOn: "Jeter"
+- wait: 4000
+
+# Turn 4
+- tapOn:
+    point: "35%,45%"
+- wait: 500
+- tapOn:
+    point: "30%,92%"
+- wait: 300
+- tapOn: "Jeter"
+- wait: 4000
+
+# Turn 5
+- tapOn:
+    point: "35%,45%"
+- wait: 500
+- tapOn:
+    point: "70%,92%"
+- wait: 300
+- tapOn: "Jeter"
+- wait: 4000
+
+# Take screenshot after 5 rounds of play
+- takeScreenshot: flow8_after_5_turns
+
+# Try selecting multiple cards (tap 3 adjacent cards)
+- tapOn:
+    point: "35%,45%"
+- wait: 500
+- tapOn:
+    point: "35%,92%"
+- wait: 300
+- tapOn:
+    point: "42%,92%"
+- wait: 300
+- tapOn:
+    point: "49%,92%"
+- wait: 500
+
+# Take screenshot showing selection state
+- takeScreenshot: flow8_card_selection
+

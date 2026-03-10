@@ -79,7 +79,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.userId!, client.userName!, data.config || {},
     );
     client.join(room.id);
-    client.emit('room_created', { roomCode: room.code, roomId: room.id });
+    client.emit('room_created', {
+      roomCode: room.code,
+      roomId: room.id,
+      numPlayers: room.config.numPlayers,
+      players: room.players.map(p => ({ id: p.id, name: p.name, ready: p.ready })),
+    });
     return { roomCode: room.code };
   }
 
@@ -92,14 +97,16 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const room = this.roomService.joinRoom(data.roomCode, client.userId!, client.userName!);
       client.join(room.id);
 
-      // Notify all in room
+      // Notify all in room with full players list
       this.server.to(room.id).emit('player_joined', {
         playerId: client.userId,
         playerName: client.userName,
+        players: room.players.map(p => ({ id: p.id, name: p.name, ready: p.ready })),
       });
 
       client.emit('room_joined', {
         roomCode: room.code,
+        numPlayers: room.config.numPlayers,
         players: room.players.map(p => ({ id: p.id, name: p.name, ready: p.ready })),
       });
     } catch (err: any) {
@@ -123,7 +130,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!room) return;
 
     this.roomService.setReady(room.id, client.userId!);
-    this.server.to(room.id).emit('player_ready', { playerId: client.userId });
+    this.server.to(room.id).emit('player_ready', {
+      playerId: client.userId,
+      players: room.players.map(p => ({ id: p.id, name: p.name, ready: p.ready })),
+    });
   }
 
   @SubscribeMessage('start_game')
@@ -134,6 +144,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('game_error', { code: 'NOT_HOST', message: 'Only host can start' });
       return;
     }
+    // Auto-mark host as ready (host is always ready)
+    this.roomService.setReady(room.id, client.userId!);
     if (!this.roomService.allReady(room.id)) {
       client.emit('game_error', { code: 'NOT_READY', message: 'Not all players ready' });
       return;

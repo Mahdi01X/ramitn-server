@@ -164,11 +164,11 @@ export function applyAction(state: GameState, rawAction: GameAction): GameState 
 function afterDiscard(state: GameState, playerId: string): GameState {
   const player = state.players.find(p => p.id === playerId)!;
 
-  // Apply discard-draw penalty: drew from discard but didn't open → +penalty
+  // Drew from discard but didn't open → 100 pts penalty (accumulated, doesn't end round)
   if (player.drewFromDiscard && !player.hasOpened && state.config.discardDrawPenalty > 0) {
     const players = state.players.map(p =>
       p.id === playerId
-        ? { ...p, totalScore: p.totalScore + state.config.discardDrawPenalty, drewFromDiscard: false }
+        ? { ...p, score: p.score + state.config.discardDrawPenalty, drewFromDiscard: false }
         : p,
     );
     state = { ...state, players };

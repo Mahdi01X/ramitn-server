@@ -13,9 +13,14 @@ export function calculateRoundScores(state: GameState): Record<string, number> {
   const scores: Record<string, number> = {};
   for (const player of state.players) {
     if (player.hand.length === 0) {
+      // Winner: 0 points
       scores[player.id] = 0;
+    } else if (!player.hasOpened) {
+      // Never opened → minimum 100 pts penalty (or more if accumulated from discard draw penalties)
+      scores[player.id] = Math.max(100, player.score);
     } else {
-      scores[player.id] = calculateHandPenalty(player.hand, state.config);
+      // Opened but has remaining cards → count card points + any accumulated penalties
+      scores[player.id] = player.score + calculateHandPenalty(player.hand, state.config);
     }
   }
   return scores;

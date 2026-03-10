@@ -11,6 +11,7 @@ import '../../models/meld.dart';
 import '../../models/game_config.dart';
 import '../../core/theme.dart';
 import '../../services/music_service.dart';
+import '../../services/sfx_service.dart';
 import 'widgets/playing_card.dart';
 import 'widgets/fan_hand_widget.dart';
 import 'widgets/opponent_hand_widget.dart';
@@ -162,9 +163,9 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
     }
     if (isOffline) _lastPlayerIdShown = playerId;
 
-    // Haptic feedback when it becomes my turn
+    // Haptic + sfx feedback when it becomes my turn
     if (isMyTurn && !_wasMyTurn) {
-      HapticFeedback.mediumImpact();
+      SfxService.instance.yourTurn();
     }
     _wasMyTurn = isMyTurn;
 
@@ -254,7 +255,9 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
                 if (_musicPlaying) { MusicService.instance.play(); }
                 else { MusicService.instance.stop(); }
               },
+              onOpenAudioSelector: () => _showAudioSelector(context),
               turnTimeoutSeconds: config.turnTimeoutSeconds,
+              isFirstTurn: isOffline ? (engine?.state.turnCount ?? 0) < (engine?.state.players.length ?? 1) : false,
             ),
 
             // Felt table
@@ -277,16 +280,17 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
                         : null)
                     : null,
                 onDrawDeck: isMyTurn && turnStep == 'draw'
-                    ? () { HapticFeedback.lightImpact(); isOffline ? notifier.offlineDrawFromDeck() : notifier.onlineAction({'type': 'draw_deck'}); }
+                    ? () { SfxService.instance.cardDraw(); isOffline ? notifier.offlineDrawFromDeck() : notifier.onlineAction({'type': 'draw_deck'}); }
                     : null,
                 onDrawDiscard: isMyTurn && turnStep == 'draw' && topDiscard != null
                     && !(isOffline && engine != null && engine.isDiscardDuplicate())
-                    ? () { HapticFeedback.lightImpact(); _confirmDrawFromDiscard(context, notifier, isOffline, hasOpened, config); }
+                    ? () { SfxService.instance.cardDraw(); _confirmDrawFromDiscard(context, notifier, isOffline, hasOpened, config); }
                     : null,
                 // Tap on a meld to lay off selected card
                 onTapMeld: isMyTurn && turnStep == 'play' && hasOpened && gs.selectedCardIds.length == 1
                     ? (meldId) {
                         final cardId = gs.selectedCardIds.first;
+                        SfxService.instance.layoff();
                         if (isOffline) {
                           final msg = notifier.offlineLayoffDrag(cardId, meldId);
                           if (msg != null && context.mounted) {
@@ -318,7 +322,7 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
                 // Drag card to discard pile
                 onDropDiscard: isMyTurn && turnStep == 'play' && gs.stagedMelds.isEmpty
                     ? (cardId) {
-                        HapticFeedback.mediumImpact();
+                        SfxService.instance.cardDiscard();
                         if (isOffline) {
                           notifier.offlineDiscard(cardId);
                         } else {
@@ -419,6 +423,7 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
                 openingRequired: config.openingThreshold,
                 canDiscard: gs.selectedCardIds.length == 1 && gs.stagedMelds.isEmpty,
                 onStageMeld: meldIsValid ? () {
+                  SfxService.instance.meldPlace();
                   notifier.stageMeld(
                     gs.selectedCardIds,
                     selectedCards,
@@ -427,8 +432,9 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
                     selectedCards.any((c) => c.isJoker),
                   );
                 } : null,
-                onConfirmOpen: canConfirmOpening ? () => notifier.confirmOpening() : null,
+                onConfirmOpen: canConfirmOpening ? () { SfxService.instance.openingConfirm(); notifier.confirmOpening(); } : null,
                 onDirectMeld: hasOpened && meldIsValid ? () {
+                  SfxService.instance.meldPlace();
                   if (isOffline) {
                     notifier.offlineMeld();
                   } else {
@@ -437,7 +443,7 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
                   }
                 } : null,
                 onDiscard: gs.selectedCardIds.length == 1 && gs.stagedMelds.isEmpty ? () {
-                  HapticFeedback.mediumImpact();
+                  SfxService.instance.cardDiscard();
                   final cardId = gs.selectedCardIds.first;
                   if (isOffline) {
                     notifier.offlineDiscard(cardId);
@@ -455,12 +461,13 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
               cards: visibleHand,
               selectedIds: gs.selectedCardIds.toSet(),
               validHighlightIds: validHighlightIds,
-              onTapCard: (id) => notifier.toggleCardSelection(id),
-              onReorder: (from, to) => notifier.reorderCard(from, to),
-              onReorderGroup: (cardIds, insertIdx) => notifier.reorderGroup(cardIds, insertIdx),
+              newlyDrawnCardId: gs.newlyDrawnCardId,
+              onTapCard: (id) { SfxService.instance.cardTap(); notifier.toggleCardSelection(id); },
+              onReorder: (from, to) { SfxService.instance.cardSlide(); notifier.reorderCard(from, to); },
+              onReorderGroup: (cardIds, insertIdx) { SfxService.instance.cardSlide(); notifier.reorderGroup(cardIds, insertIdx); },
               onDragToDiscard: isMyTurn && turnStep == 'play' && gs.stagedMelds.isEmpty
                   ? (cardId) {
-                      HapticFeedback.mediumImpact();
+                      SfxService.instance.cardDiscard();
                       if (isOffline) { notifier.offlineDiscard(cardId); }
                       else { notifier.onlineAction({'type': 'discard', 'cardId': cardId}); }
                       notifier.clearSelection();
@@ -468,9 +475,7 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
                   : null,
               onDropDrawnCard: isMyTurn && turnStep == 'draw'
                   ? (insertIndex) {
-                      // Draw from deck — the card will be added and then we could reorder
-                      // For now just trigger the draw
-                      HapticFeedback.lightImpact();
+                      SfxService.instance.cardDraw();
                       if (isOffline) { notifier.offlineDrawFromDeck(); }
                       else { notifier.onlineAction({'type': 'draw_deck'}); }
                     }
@@ -582,6 +587,178 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
     );
   }
 
+  void _showAudioSelector(BuildContext ctx) {
+    // Start fetching radios immediately
+    List<RadioStation> radioStations = [];
+    bool loadingRadios = true;
+
+    fetchTunisianRadios().then((stations) {
+      radioStations = stations;
+      loadingRadios = false;
+    });
+
+    showModalBottomSheet(
+      context: ctx,
+      backgroundColor: const Color(0xFF1A0E06),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final music = MusicService.instance;
+          final currentMode = music.mode;
+          final currentStation = music.currentStation;
+
+          // Refresh when radios load
+          if (loadingRadios) {
+            fetchTunisianRadios().then((stations) {
+              radioStations = stations;
+              loadingRadios = false;
+              if (context.mounted) setSheetState(() {});
+            });
+          }
+
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text('🎧 Audio', style: TextStyle(color: Color(0xFFFFD700), fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Text(
+                  music.currentLabel,
+                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+
+                // Volume slider
+                Row(
+                  children: [
+                    const Icon(Icons.volume_down_rounded, color: Colors.white38, size: 18),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderThemeData(
+                          activeTrackColor: const Color(0xFFFFD700),
+                          inactiveTrackColor: Colors.white12,
+                          thumbColor: const Color(0xFFFFD700),
+                          overlayColor: const Color(0xFFFFD700).withOpacity(0.15),
+                          trackHeight: 3,
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                        ),
+                        child: Slider(
+                          value: music.volume,
+                          onChanged: (v) {
+                            music.setVolume(v);
+                            setSheetState(() {});
+                          },
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.volume_up_rounded, color: Colors.white38, size: 18),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Off button
+                _AudioOptionTile(
+                  emoji: '🔇',
+                  title: 'Audio off',
+                  subtitle: 'Silence total',
+                  isSelected: currentMode == AudioMode.off,
+                  onTap: () {
+                    music.switchOff();
+                    setState(() => _musicPlaying = false);
+                    setSheetState(() {});
+                  },
+                ),
+
+                // Local music
+                _AudioOptionTile(
+                  emoji: '🎵',
+                  title: 'Yasmina',
+                  subtitle: 'Musique du café tunisien',
+                  isSelected: currentMode == AudioMode.localMusic,
+                  onTap: () {
+                    music.switchToLocalMusic();
+                    setState(() => _musicPlaying = true);
+                    setSheetState(() {});
+                  },
+                ),
+
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Container(width: 30, height: 1, color: Colors.white12),
+                    const SizedBox(width: 8),
+                    Text('📻 Radios Tunisiennes en direct', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 8),
+                    Expanded(child: Container(height: 1, color: Colors.white12)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+
+                // Radio stations — dynamically loaded
+                if (loadingRadios)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFFD700))),
+                        SizedBox(width: 10),
+                        Text('Chargement des radios...', style: TextStyle(color: Colors.white38, fontSize: 12)),
+                      ],
+                    ),
+                  )
+                else
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 230),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: radioStations.length,
+                      itemBuilder: (_, i) {
+                        final station = radioStations[i];
+                        final isActive = currentMode == AudioMode.radio &&
+                            currentStation?.url == station.url;
+                        return _AudioOptionTile(
+                          emoji: station.emoji,
+                          title: station.name,
+                          subtitle: isActive && music.isLoading
+                              ? '⏳ Connexion...'
+                              : isActive && music.lastError != null
+                                  ? '❌ Erreur — touchez pour réessayer'
+                                  : isActive && music.isPlaying
+                                      ? '▶ En cours de lecture'
+                                      : station.description ?? 'Radio en direct',
+                          isSelected: isActive,
+                          isLive: true,
+                          onTap: () async {
+                            setSheetState(() {});
+                            await music.switchToRadio(station);
+                            setState(() => _musicPlaying = true);
+                            if (context.mounted) setSheetState(() {});
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   void _showScoreBoard(BuildContext ctx, GameProviderState gs) {
     showModalBottomSheet(
       context: ctx,
@@ -606,13 +783,16 @@ class _CompactHeader extends StatelessWidget {
   final VoidCallback onScore;
   final bool musicPlaying;
   final VoidCallback onToggleMusic;
+  final VoidCallback onOpenAudioSelector;
   final int turnTimeoutSeconds;
+  final bool isFirstTurn;
 
   const _CompactHeader({
     required this.playerName, required this.isMyTurn, required this.turnStep,
     required this.round, required this.maxRounds, required this.onBack, required this.onScore,
-    required this.musicPlaying, required this.onToggleMusic,
+    required this.musicPlaying, required this.onToggleMusic, required this.onOpenAudioSelector,
     this.turnTimeoutSeconds = 60,
+    this.isFirstTurn = false,
   });
 
   @override
@@ -700,7 +880,7 @@ class _CompactHeader extends StatelessWidget {
           const SizedBox(width: 4),
 
           // Timer
-          _TurnTimer(isMyTurn: isMyTurn, seconds: turnTimeoutSeconds),
+          _TurnTimer(isMyTurn: isMyTurn, seconds: turnTimeoutSeconds, isFirstTurn: isFirstTurn),
 
           // Round badge
           if (round > 0) ...[
@@ -719,10 +899,10 @@ class _CompactHeader extends StatelessWidget {
             ),
           ],
 
-          // Music toggle
+          // Music / Radio selector
           _HeaderIconBtn(
-            icon: musicPlaying ? Icons.music_note_rounded : Icons.music_off_rounded,
-            onTap: onToggleMusic,
+            icon: musicPlaying ? Icons.radio_rounded : Icons.music_off_rounded,
+            onTap: onOpenAudioSelector,
             size: 15,
           ),
 
@@ -767,7 +947,8 @@ class _HeaderIconBtn extends StatelessWidget {
 class _TurnTimer extends StatefulWidget {
   final bool isMyTurn;
   final int seconds;
-  const _TurnTimer({required this.isMyTurn, required this.seconds});
+  final bool isFirstTurn;
+  const _TurnTimer({required this.isMyTurn, required this.seconds, this.isFirstTurn = false});
 
   @override
   State<_TurnTimer> createState() => _TurnTimerState();
@@ -777,19 +958,24 @@ class _TurnTimerState extends State<_TurnTimer> {
   late int _remaining;
   Timer? _timer;
 
+  /// First turn after dealing = 60s for organizing cards
+  static const int _firstTurnSeconds = 60;
+
+  int get _effectiveSeconds => widget.isFirstTurn ? _firstTurnSeconds : widget.seconds;
+
   @override
   void initState() {
     super.initState();
-    _remaining = widget.seconds;
+    _remaining = _effectiveSeconds;
     _startTimer();
   }
 
   @override
   void didUpdateWidget(covariant _TurnTimer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Reset timer when turn changes
-    if (oldWidget.isMyTurn != widget.isMyTurn) {
-      _remaining = widget.seconds;
+    // Reset timer when turn changes OR when isFirstTurn changes
+    if (oldWidget.isMyTurn != widget.isMyTurn || oldWidget.isFirstTurn != widget.isFirstTurn) {
+      _remaining = _effectiveSeconds;
       _startTimer();
     }
   }
@@ -1417,6 +1603,108 @@ class _FrichVoteScreen extends StatelessWidget {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+// ___ Audio Option Tile ___
+class _AudioOptionTile extends StatelessWidget {
+  final String emoji;
+  final String title;
+  final String subtitle;
+  final bool isSelected;
+  final bool isLive;
+  final VoidCallback onTap;
+  const _AudioOptionTile({
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+    required this.isSelected,
+    this.isLive = false,
+    required this.onTap,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.symmetric(vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFFFFD700).withOpacity(0.12)
+              : Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFFFFD700).withOpacity(0.5)
+                : Colors.white.withOpacity(0.06),
+            width: isSelected ? 1.5 : 1,
+          ),
+          boxShadow: isSelected
+              ? [BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.08), blurRadius: 8)]
+              : null,
+        ),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: isSelected ? const Color(0xFFFFD700) : Colors.white,
+                          fontSize: 14,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                      if (isLive) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withOpacity(0.25),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.redAccent.withOpacity(0.5), width: 0.5),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.circle, color: Colors.redAccent, size: 6),
+                              SizedBox(width: 3),
+                              Text('LIVE', style: TextStyle(color: Colors.redAccent, fontSize: 8, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Container(
+                width: 24, height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFFD700).withOpacity(0.2),
+                ),
+                child: const Icon(Icons.check_rounded, color: Color(0xFFFFD700), size: 16),
+              )
+            else
+              Icon(Icons.play_circle_outline_rounded, color: Colors.white.withOpacity(0.15), size: 22),
           ],
         ),
       ),

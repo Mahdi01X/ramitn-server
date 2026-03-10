@@ -1,0 +1,31 @@
+appId: com.ramitunisien.rami_tunisien
+---
+# Flow 5: Score Board — Open and verify scoreboard during game
+# Validates: score bottom sheet opens, shows player scores
+
+- launchApp
+
+# Start 1v1 vs bot
+- tapOn: "Jouer Hors-ligne"
+- tapOn:
+    text: "-"
+    index: 0
+- tapOn:
+    text: "+"
+    index: 1
+- tapOn: "Lancer la partie"
+- tapOn: "Non, on joue"
+- wait: 2000
+
+# Tap score/leaderboard button (rightmost icon in header)
+- tapOn:
+    point: "95%,12%"
+- wait: 1000
+
+# Score board should show player names
+- takeScreenshot: flow5_scoreboard
+
+# Close
+- back
+- wait: 500
+

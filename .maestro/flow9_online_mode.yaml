@@ -1,0 +1,19 @@
+appId: com.ramitunisien.rami_tunisien
+---
+# Flow 9: Online Mode — Navigate to online screen
+# Validates: online mode UI loads
+
+- launchApp
+
+# Navigate to online mode
+- tapOn: "Jouer En ligne"
+- wait: 1000
+
+# Should show online options
+- takeScreenshot: flow9_online_screen
+
+# Go back
+- back
+- wait: 500
+- assertVisible: "Jouer Hors-ligne"
+

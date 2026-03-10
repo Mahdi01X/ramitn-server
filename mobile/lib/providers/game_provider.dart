@@ -46,6 +46,7 @@ class GameProviderState {
   final int offlineCurrentPlayerIdx;
   final List<int> onlineHandOrder; // Client-side card arrangement for online
   final Map<String, dynamic>? onlineRoundResults; // Results from server round_end event
+  final int? newlyDrawnCardId; // Card just drawn — highlighted for manual placement
   final int _version;
 
   const GameProviderState({
@@ -59,6 +60,7 @@ class GameProviderState {
     this.offlineCurrentPlayerIdx = 0,
     this.onlineHandOrder = const [],
     this.onlineRoundResults,
+    this.newlyDrawnCardId,
     int version = 0,
   }) : _version = version;
 
@@ -95,6 +97,8 @@ class GameProviderState {
     int? offlineCurrentPlayerIdx,
     List<int>? onlineHandOrder,
     Map<String, dynamic>? onlineRoundResults,
+    int? newlyDrawnCardId,
+    bool clearNewlyDrawn = false,
   }) => GameProviderState(
     mode: mode ?? this.mode,
     onlineState: onlineState ?? this.onlineState,
@@ -106,6 +110,7 @@ class GameProviderState {
     offlineCurrentPlayerIdx: offlineCurrentPlayerIdx ?? this.offlineCurrentPlayerIdx,
     onlineHandOrder: onlineHandOrder ?? this.onlineHandOrder,
     onlineRoundResults: onlineRoundResults ?? this.onlineRoundResults,
+    newlyDrawnCardId: clearNewlyDrawn ? null : (newlyDrawnCardId ?? this.newlyDrawnCardId),
     version: _version + 1,
   );
 }
@@ -199,6 +204,7 @@ class GameNotifier extends StateNotifier<GameProviderState> {
   }
 
   /// Feature 1: Turn timer — auto-play after timeout
+  /// First turn of the round: 60s (for organizing cards), then normal timeout
   void _startTurnTimer() {
     _turnTimer?.cancel();
     final engine = state.offlineEngine;
@@ -206,7 +212,8 @@ class GameNotifier extends StateNotifier<GameProviderState> {
     if (engine.state.phase != LocalGamePhase.playerTurn) return;
     if (engine.state.currentPlayer.isBot) return; // Bots play by themselves
 
-    final timeout = engine.state.config.turnTimeoutSeconds;
+    final isFirstTurn = engine.state.turnCount < engine.state.players.length;
+    final timeout = isFirstTurn ? 60 : engine.state.config.turnTimeoutSeconds;
     _turnTimer = Timer(Duration(seconds: timeout), () {
       _autoPlayTimeout();
     });
@@ -236,8 +243,14 @@ class GameNotifier extends StateNotifier<GameProviderState> {
   void offlineDrawFromDeck() {
     try {
       _cancelTurnTimer();
-      state.offlineEngine!.drawFromDeck();
-      _notifyOffline();
+      final engine = state.offlineEngine!;
+      // Get the card that will be drawn (top of draw pile)
+      final drawnCardId = engine.state.drawPile.isNotEmpty ? engine.state.drawPile.first.id : null;
+      engine.drawFromDeck();
+      state = state.copyWith(
+        newlyDrawnCardId: drawnCardId,
+        offlineCurrentPlayerIdx: engine.state.currentPlayerIndex,
+      );
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
@@ -246,8 +259,14 @@ class GameNotifier extends StateNotifier<GameProviderState> {
   void offlineDrawFromDiscard() {
     try {
       _cancelTurnTimer();
-      state.offlineEngine!.drawFromDiscard();
-      _notifyOffline();
+      final engine = state.offlineEngine!;
+      // Get the card that will be drawn (top of discard pile)
+      final drawnCardId = engine.state.discardPile.isNotEmpty ? engine.state.discardPile.last.id : null;
+      engine.drawFromDiscard();
+      state = state.copyWith(
+        newlyDrawnCardId: drawnCardId,
+        offlineCurrentPlayerIdx: engine.state.currentPlayerIndex,
+      );
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
@@ -357,7 +376,7 @@ class GameNotifier extends StateNotifier<GameProviderState> {
     try {
       _cancelTurnTimer();
       state.offlineEngine!.discard(cardId);
-      state = state.copyWith(stagedMelds: [], selectedCardIds: []);
+      state = state.copyWith(stagedMelds: [], selectedCardIds: [], clearNewlyDrawn: true);
       _notifyOffline();
       _processBotTurns();
     } catch (e) {
@@ -378,40 +397,46 @@ class GameNotifier extends StateNotifier<GameProviderState> {
 
     while (engine.state.phase == LocalGamePhase.playerTurn &&
            engine.state.currentPlayer.isBot) {
-      await Future.delayed(const Duration(milliseconds: 600));
+      // Initial "thinking" pause — bot appears to evaluate the board
+      await Future.delayed(const Duration(milliseconds: 1200));
       if (engine.state.phase != LocalGamePhase.playerTurn) break;
       if (!engine.state.currentPlayer.isBot) break;
 
       try {
-        // Step 1: Draw
+        // Step 1: Draw — with a slight hesitation
         final drawResult = engine.executeBotDraw();
         if (drawResult) {
           _notifyOffline();
-          await Future.delayed(const Duration(milliseconds: 500));
+          // Pause after draw to "look at the card"
+          await Future.delayed(const Duration(milliseconds: 900));
         }
 
         if (engine.state.phase != LocalGamePhase.playerTurn) break;
         if (!engine.state.currentPlayer.isBot) break;
 
-        // Step 2: Try opening or melds — one at a time with delay
+        // Step 2: Try opening or melds — one at a time with realistic delay
         bool didMeld = true;
         while (didMeld) {
+          // "Thinking" before placing a meld
+          await Future.delayed(const Duration(milliseconds: 600));
           didMeld = engine.executeBotSingleMeld();
           if (didMeld) {
             _notifyOffline();
-            await Future.delayed(const Duration(milliseconds: 800));
+            // Pause after placing meld — let the player see it
+            await Future.delayed(const Duration(milliseconds: 1200));
           }
           if (engine.state.phase != LocalGamePhase.playerTurn) break;
         }
         if (engine.state.phase != LocalGamePhase.playerTurn) break;
 
-        // Step 3: Try layoffs — one at a time with delay
+        // Step 3: Try layoffs — one at a time with realistic delay
         bool didLayoff = true;
         while (didLayoff) {
+          await Future.delayed(const Duration(milliseconds: 500));
           didLayoff = engine.executeBotSingleLayoff();
           if (didLayoff) {
             _notifyOffline();
-            await Future.delayed(const Duration(milliseconds: 600));
+            await Future.delayed(const Duration(milliseconds: 900));
           }
           if (engine.state.phase != LocalGamePhase.playerTurn) break;
         }
@@ -420,18 +445,20 @@ class GameNotifier extends StateNotifier<GameProviderState> {
         // Step 3b: Try joker recovery
         bool didRecover = true;
         while (didRecover) {
+          await Future.delayed(const Duration(milliseconds: 500));
           didRecover = engine.executeBotJokerRecovery();
           if (didRecover) {
             _notifyOffline();
-            await Future.delayed(const Duration(milliseconds: 600));
+            await Future.delayed(const Duration(milliseconds: 1100));
           }
           if (engine.state.phase != LocalGamePhase.playerTurn) break;
         }
         if (engine.state.phase != LocalGamePhase.playerTurn) break;
 
-        // Step 4: Discard
+        // Step 4: Discard — brief "choosing" pause
         if (engine.state.currentPlayer.isBot &&
             engine.state.currentPlayer.hand.isNotEmpty) {
+          await Future.delayed(const Duration(milliseconds: 700));
           engine.executeBotDiscard();
           _notifyOffline();
         }
@@ -457,11 +484,11 @@ class GameNotifier extends StateNotifier<GameProviderState> {
     } else {
       selected.add(cardId);
     }
-    state = state.copyWith(selectedCardIds: selected);
+    state = state.copyWith(selectedCardIds: selected, clearNewlyDrawn: true);
   }
 
   void clearSelection() {
-    state = state.copyWith(selectedCardIds: []);
+    state = state.copyWith(selectedCardIds: [], clearNewlyDrawn: true);
   }
 
   /// Reorder a card in the player's hand (drag & drop).
@@ -491,7 +518,7 @@ class GameNotifier extends StateNotifier<GameProviderState> {
       // Add any remaining
       while (vi < visibleOrder.length) { newOrder.add(visibleOrder[vi++]); }
 
-      state = state.copyWith(onlineHandOrder: newOrder);
+      state = state.copyWith(onlineHandOrder: newOrder, clearNewlyDrawn: true);
       return;
     }
 
@@ -523,7 +550,10 @@ class GameNotifier extends StateNotifier<GameProviderState> {
 
     hand.clear();
     hand.addAll(newHand);
-    _notifyOffline();
+    state = state.copyWith(
+      offlineCurrentPlayerIdx: engine.state.currentPlayerIndex,
+      clearNewlyDrawn: true,
+    );
   }
 
   /// Reorder a group of selected cards, moving them all to [targetIndex] in the visible hand.
@@ -585,11 +615,15 @@ class GameNotifier extends StateNotifier<GameProviderState> {
         final newCards = serverHandIds.where((id) => !keptOrder.contains(id)).toList();
         final mergedOrder = [...keptOrder, ...newCards];
 
+        // Detect newly drawn card (single new card added to hand after a draw)
+        final drawnCardId = newCards.length == 1 ? newCards.first : null;
+
         state = state.copyWith(
           mode: GameMode.online,
           onlineState: gameState,
           myPlayerId: _socket.playerId ?? id,
           onlineHandOrder: mergedOrder,
+          newlyDrawnCardId: drawnCardId,
           error: null,
         );
       } catch (e) {

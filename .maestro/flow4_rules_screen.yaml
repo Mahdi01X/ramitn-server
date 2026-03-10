@@ -1,0 +1,21 @@
+appId: com.ramitunisien.rami_tunisien
+---
+# Flow 4: Rules Screen Navigation
+# Validates: rules screen loads and displays content
+
+- launchApp
+
+# Navigate to rules
+- tapOn: "Règles du jeu"
+- wait: 1000
+
+# Rules content should be visible
+- takeScreenshot: flow4_rules_screen
+
+# Go back
+- back
+- wait: 500
+
+# Should be back at home
+- assertVisible: "Jouer Hors-ligne"
+
