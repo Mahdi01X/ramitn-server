@@ -31,7 +31,7 @@ class PlayerHandWidget extends StatefulWidget {
   State<PlayerHandWidget> createState() => _PlayerHandWidgetState();
 }
 
-class _PlayerHandWidgetState extends State<PlayerHandWidget> {
+class _PlayerHandWidgetState extends State<PlayerHandWidget> with WidgetsBindingObserver {
   final _scrollCtrl = ScrollController();
   final _stackKey = GlobalKey();
 
@@ -52,10 +52,40 @@ class _PlayerHandWidgetState extends State<PlayerHandWidget> {
   bool get _isDragging => _dragIndex >= 0;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tearDown();
     _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _cancelDragSafely();
+    }
+  }
+
+  @override
+  void deactivate() {
+    _cancelDragSafely();
+    super.deactivate();
+  }
+
+  void _cancelDragSafely() {
+    _scrollTimer?.cancel();
+    _scrollTimer = null;
+    _floatingCard?.remove();
+    _floatingCard = null;
+    _dragIndex = -1;
+    _insertSlot = -1;
   }
 
   void _tearDown() {

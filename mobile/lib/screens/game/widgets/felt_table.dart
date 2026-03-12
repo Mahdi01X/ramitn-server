@@ -50,66 +50,106 @@ class FeltTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment.center,
-          radius: 1.0,
-          colors: [
-            const Color(0xFF367D3A),
-            const Color(0xFF256B28),
-            const Color(0xFF1B5E20),
-            const Color(0xFF0D3B13),
-          ],
-          stops: const [0.0, 0.3, 0.6, 1.0],
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(child: CustomPaint(painter: _FeltTexturePainter())),
-          Positioned.fill(
-            child: Container(
-              margin: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFD4A017).withOpacity(0.15), width: 2),
-              ),
+    return DragTarget<int>(
+      // Accept cards dragged from hand for discard (anywhere on the table)
+      onWillAcceptWithDetails: (details) =>
+          onDropDiscard != null && isMyTurn && turnStep == 'play',
+      onAcceptWithDetails: (details) => onDropDiscard?.call(details.data),
+      builder: (context, candidateData, rejectedData) {
+        final isDroppingOnTable = candidateData.isNotEmpty;
+        return Container(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.center,
+              radius: 1.0,
+              colors: [
+                isDroppingOnTable ? const Color(0xFF3E8D42) : const Color(0xFF367D3A),
+                const Color(0xFF256B28),
+                const Color(0xFF1B5E20),
+                const Color(0xFF0D3B13),
+              ],
+              stops: const [0.0, 0.3, 0.6, 1.0],
             ),
+            border: isDroppingOnTable
+                ? Border.all(color: Colors.redAccent.withOpacity(0.5), width: 2)
+                : null,
           ),
-          Column(
+          child: Stack(
             children: [
-              const SizedBox(height: 8),
-              _PileZone(
-                drawCount: drawPileCount,
-                topDiscard: topDiscard,
-                canDraw: isMyTurn && turnStep == 'draw',
-                canDrop: isMyTurn && turnStep == 'play',
-                onDrawDeck: onDrawDeck,
-                onDrawDiscard: onDrawDiscard,
-                onDropDiscard: onDropDiscard,
-              ),
-              const SizedBox(height: 6),
-              _StatusBadge(isMyTurn: isMyTurn, turnStep: turnStep),
-              const SizedBox(height: 4),
-              if (stagedMelds.isNotEmpty) _StagedMeldsZone(staged: stagedMelds),
-              Expanded(
-                child: _MeldsZone(
-                  melds: tableMelds,
-                  hasOpened: hasOpened,
-                  isMyTurn: isMyTurn && turnStep == 'play',
-                  onDropOnMeld: onDropOnMeld,
-                  onDropDiscard: onDropDiscard,
-                  onTapMeld: onTapMeld,
-                  selectedCard: selectedCard,
-                  config: config,
-                  currentPlayerId: currentPlayerId,
-                  playerInfos: playerInfos,
+              Positioned.fill(child: CustomPaint(painter: _FeltTexturePainter())),
+              Positioned.fill(
+                child: Container(
+                  margin: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFD4A017).withOpacity(0.15), width: 2),
+                  ),
                 ),
+              ),
+              // Hint when dragging a card onto the table
+              if (isDroppingOnTable)
+                Positioned(
+                  bottom: 8,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(color: Colors.redAccent.withOpacity(0.4), blurRadius: 12),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.delete_outline, color: Colors.white, size: 16),
+                          SizedBox(width: 6),
+                          Text('Défausser ici',
+                              style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              Column(
+                children: [
+                  const SizedBox(height: 8),
+                  _PileZone(
+                    drawCount: drawPileCount,
+                    topDiscard: topDiscard,
+                    canDraw: isMyTurn && turnStep == 'draw',
+                    canDrop: isMyTurn && turnStep == 'play',
+                    onDrawDeck: onDrawDeck,
+                    onDrawDiscard: onDrawDiscard,
+                    onDropDiscard: onDropDiscard,
+                  ),
+                  const SizedBox(height: 6),
+                  _StatusBadge(isMyTurn: isMyTurn, turnStep: turnStep),
+                  const SizedBox(height: 4),
+                  if (stagedMelds.isNotEmpty) _StagedMeldsZone(staged: stagedMelds),
+                  Expanded(
+                    child: _MeldsZone(
+                      melds: tableMelds,
+                      hasOpened: hasOpened,
+                      isMyTurn: isMyTurn && turnStep == 'play',
+                      onDropOnMeld: onDropOnMeld,
+                      onDropDiscard: onDropDiscard,
+                      onTapMeld: onTapMeld,
+                      selectedCard: selectedCard,
+                      config: config,
+                      currentPlayerId: currentPlayerId,
+                      playerInfos: playerInfos,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

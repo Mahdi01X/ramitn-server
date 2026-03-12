@@ -40,7 +40,7 @@ class FanHandWidget extends StatefulWidget {
 }
 
 class _FanHandWidgetState extends State<FanHandWidget>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   // Drag reorder state
   int _dragIndex = -1;
   int _insertSlot = -1;
@@ -51,6 +51,8 @@ class _FanHandWidgetState extends State<FanHandWidget>
 
   // Layout cache
   final _stackKey = GlobalKey();
+  // Key to locate the hand area for discard zone detection
+  final _handAreaKey = GlobalKey();
 
   bool get _isDragging => _dragIndex >= 0;
 
@@ -61,6 +63,7 @@ class _FanHandWidgetState extends State<FanHandWidget>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _dealController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
@@ -74,9 +77,51 @@ class _FanHandWidgetState extends State<FanHandWidget>
 
   @override
   void dispose() {
-    _tearDown();
+    WidgetsBinding.instance.removeObserver(this);
+    _cancelDragSafely();
     _dealController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Cancel any drag in progress when app goes to background
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _cancelDragSafely();
+    }
+  }
+
+  @override
+  void deactivate() {
+    // Cancel drag when widget is removed from tree (navigation, etc.)
+    _cancelDragSafely();
+    super.deactivate();
+  }
+
+  /// Safely cancel any drag in progress and clean up overlay
+  void _cancelDragSafely() {
+    _floatingCard?.remove();
+    _floatingCard = null;
+    _dragIndex = -1;
+    _insertSlot = -1;
+    _isDraggingGroup = false;
+    _dragStartedUpward = false;
+  }
+
+  @override
+  void didUpdateWidget(covariant FanHandWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the cards have changed (different length or different card set), cancel any active drag
+    // This prevents ghost overlay cards when a discard/draw changes the hand
+    if (widget.cards.length != oldWidget.cards.length ||
+        (widget.cards.isNotEmpty && oldWidget.cards.isNotEmpty &&
+         widget.cards.first.id != oldWidget.cards.first.id)) {
+      if (_isDragging) {
+        _cancelDragSafely();
+        if (mounted) setState(() {});
+      }
+    }
   }
 
   void _tearDown() {
@@ -163,7 +208,15 @@ class _FanHandWidgetState extends State<FanHandWidget>
 
     // Build floating card(s)
     _floatingCard = OverlayEntry(builder: (_) {
-      final isDragUp = _fingerGlobal.dy < (MediaQuery.of(context).size.height - 200);
+      // Detect if finger is above the hand area (discard zone)
+      final handBox = _handAreaKey.currentContext?.findRenderObject() as RenderBox?;
+      bool isDragUp;
+      if (handBox != null && handBox.attached) {
+        final handTopGlobal = handBox.localToGlobal(Offset.zero).dy;
+        isDragUp = _fingerGlobal.dy < (handTopGlobal - 30);
+      } else {
+        isDragUp = _fingerGlobal.dy < (MediaQuery.of(context).size.height - 200);
+      }
       final groupCards = _isDraggingGroup
           ? widget.cards.where((c) => widget.selectedIds.contains(c.id)).toList()
           : [card];
@@ -249,8 +302,17 @@ class _FanHandWidgetState extends State<FanHandWidget>
     _fingerGlobal = globalPos;
     _floatingCard?.markNeedsBuild();
 
-    final screenH = MediaQuery.of(context).size.height;
-    _dragStartedUpward = globalPos.dy < (screenH - 220);
+    // Detect if finger is above the hand area (= in the table zone = discard)
+    final handBox = _handAreaKey.currentContext?.findRenderObject() as RenderBox?;
+    if (handBox != null && handBox.attached) {
+      final handTopGlobal = handBox.localToGlobal(Offset.zero).dy;
+      // Card is "out of hand" if the finger is above the hand area top edge (with 30px tolerance)
+      _dragStartedUpward = globalPos.dy < (handTopGlobal - 30);
+    } else {
+      // Fallback to screen-based detection
+      final screenH = MediaQuery.of(context).size.height;
+      _dragStartedUpward = globalPos.dy < (screenH - 220);
+    }
 
     final s = _xToSlot(globalPos.dx, width, cardW, cardH);
     if (s != _insertSlot) {
@@ -329,6 +391,7 @@ class _FanHandWidgetState extends State<FanHandWidget>
       builder: (context, candidateData, rejectedData) {
         final isReceiving = candidateData.isNotEmpty;
         return Container(
+          key: _handAreaKey,
           height: cardH + 58,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
@@ -397,20 +460,28 @@ class _FanHandWidgetState extends State<FanHandWidget>
                                 ),
                               ),
 
-                            // Discard hint zone
-                            if (_isDragging && _dragStartedUpward)
+                            // Discard hint zone — visible when card is dragged out of hand area
+                            if (_isDragging && _dragStartedUpward && widget.onDragToDiscard != null)
                               Positioned(
-                                top: -10, left: 0, right: 0, height: 30,
+                                top: -40, left: 0, right: 0, height: 40,
                                 child: Container(
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       begin: Alignment.topCenter,
                                       end: Alignment.bottomCenter,
-                                      colors: [Colors.redAccent.withOpacity(0.3), Colors.transparent],
+                                      colors: [Colors.redAccent.withOpacity(0.5), Colors.redAccent.withOpacity(0.1)],
                                     ),
+                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                                   ),
-                                  child: const Center(
-                                    child: Text('↑ Défausser', style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                                  child: Center(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.delete_outline, color: Colors.redAccent.withOpacity(0.9), size: 14),
+                                        const SizedBox(width: 4),
+                                        const Text('Défausser', style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -479,11 +550,7 @@ class _FanHandWidgetState extends State<FanHandWidget>
           },
           onLongPressCancel: () {
             if (_isDragging) {
-              _tearDown();
-              _dragIndex = -1;
-              _insertSlot = -1;
-              _isDraggingGroup = false;
-              _dragStartedUpward = false;
+              _cancelDragSafely();
               if (mounted) setState(() {});
             }
           },
@@ -507,6 +574,11 @@ class _FanHandWidgetState extends State<FanHandWidget>
                     )
                   : Draggable<int>(
                       data: card.id,
+                      maxSimultaneousDrags: 1,
+                      onDragEnd: (_) {
+                        // Ensure no stale state after native drag ends
+                        if (mounted) setState(() {});
+                      },
                       feedback: Material(
                         color: Colors.transparent,
                         child: Transform.scale(

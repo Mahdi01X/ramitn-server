@@ -31,6 +31,7 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
   String? _lastPlayerIdShown;
   bool _musicPlaying = true;
   bool _wasMyTurn = false;
+  bool _isResuming = false;
 
   @override
   void initState() {
@@ -53,8 +54,16 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
       // App going to background — pause music
       if (_musicPlaying) MusicService.instance.pause();
     } else if (state == AppLifecycleState.resumed) {
-      // App coming back — resume music
+      // App coming back — resume music and force a clean rebuild
       if (_musicPlaying) MusicService.instance.resume();
+      // Force a rebuild to ensure fresh UI state after resume
+      if (mounted) {
+        setState(() => _isResuming = true);
+        // Schedule a microtask to reset after frame completes
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _isResuming = false);
+        });
+      }
     }
   }
 
