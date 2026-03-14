@@ -13,6 +13,8 @@ class GameConfig {
   final bool jokerLocked;
   final int maxJokersPerMeld;
   final int turnTimeoutSeconds;
+  final bool duplicateProtection;
+  final int discardDrawPenalty;
 
   const GameConfig({
     this.numPlayers = 4,
@@ -26,8 +28,10 @@ class GameConfig {
     this.scoringMode = 'cumulative',
     this.eliminationThreshold = 100,
     this.jokerLocked = false,
-    this.maxJokersPerMeld = 99,
-    this.turnTimeoutSeconds = 30,
+    this.maxJokersPerMeld = 1,
+    this.turnTimeoutSeconds = 60,
+    this.duplicateProtection = true,
+    this.discardDrawPenalty = 100,
   });
 
   factory GameConfig.fromJson(Map<String, dynamic> json) {
@@ -44,7 +48,9 @@ class GameConfig {
       eliminationThreshold: json['eliminationThreshold'] ?? 100,
       jokerLocked: json['jokerLocked'] ?? false,
       maxJokersPerMeld: json['maxJokersPerMeld'] ?? 1,
-      turnTimeoutSeconds: json['turnTimeoutSeconds'] ?? 30,
+      turnTimeoutSeconds: json['turnTimeoutSeconds'] ?? 60,
+      duplicateProtection: json['duplicateProtection'] ?? true,
+      discardDrawPenalty: json['discardDrawPenalty'] ?? 100,
     );
   }
 
@@ -62,6 +68,8 @@ class GameConfig {
     'jokerLocked': jokerLocked,
     'maxJokersPerMeld': maxJokersPerMeld,
     'turnTimeoutSeconds': turnTimeoutSeconds,
+    'duplicateProtection': duplicateProtection,
+    'discardDrawPenalty': discardDrawPenalty,
   };
 
   GameConfig copyWith({
@@ -88,6 +96,8 @@ class GameConfig {
       jokerLocked: jokerLocked ?? this.jokerLocked,
       maxJokersPerMeld: maxJokersPerMeld ?? this.maxJokersPerMeld,
       turnTimeoutSeconds: turnTimeoutSeconds,
+      duplicateProtection: duplicateProtection,
+      discardDrawPenalty: discardDrawPenalty,
     );
   }
 }

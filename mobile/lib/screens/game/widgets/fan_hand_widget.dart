@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../models/card.dart' as models;
@@ -532,27 +533,37 @@ class _FanHandWidgetState extends State<FanHandWidget>
       top: lay.y + yOffset + dealY,
       child: Opacity(
         opacity: (isDragging || isHiddenByGroupDrag) ? 0.1 : dealOpacity,
-        child: GestureDetector(
-          // Tap = select card
-          onTap: !_isDragging
-              ? () {
-                  HapticFeedback.selectionClick();
-                  widget.onTapCard(card.id);
-                }
-              : null,
-          // Short long-press (150ms) = start drag for reorder or discard
-          onLongPressStart: (d) => _beginDrag(i, d.globalPosition, cardW, cardH),
-          onLongPressMoveUpdate: (d) {
-            if (_isDragging) _moveDrag(d.globalPosition, width, cardW, cardH);
-          },
-          onLongPressEnd: (_) {
-            if (_isDragging) _finishDrag(width);
-          },
-          onLongPressCancel: () {
-            if (_isDragging) {
-              _cancelDragSafely();
-              if (mounted) setState(() {});
-            }
+        child: RawGestureDetector(
+          gestures: <Type, GestureRecognizerFactory>{
+            TapGestureRecognizer: GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
+              () => TapGestureRecognizer(),
+              (TapGestureRecognizer instance) {
+                instance.onTap = !_isDragging
+                    ? () {
+                        HapticFeedback.selectionClick();
+                        widget.onTapCard(card.id);
+                      }
+                    : null;
+              },
+            ),
+            LongPressGestureRecognizer: GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
+              () => LongPressGestureRecognizer(duration: const Duration(milliseconds: 150)),
+              (LongPressGestureRecognizer instance) {
+                instance.onLongPressStart = (d) => _beginDrag(i, d.globalPosition, cardW, cardH);
+                instance.onLongPressMoveUpdate = (d) {
+                  if (_isDragging) _moveDrag(d.globalPosition, width, cardW, cardH);
+                };
+                instance.onLongPressEnd = (_) {
+                  if (_isDragging) _finishDrag(width);
+                };
+                instance.onLongPressCancel = () {
+                  if (_isDragging) {
+                    _cancelDragSafely();
+                    if (mounted) setState(() {});
+                  }
+                };
+              },
+            ),
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),

@@ -303,8 +303,19 @@ class GameNotifier extends StateNotifier<GameProviderState> {
 
   /// Confirm opening: send all staged melds to the engine at once.
   void confirmOpening() {
+    if (state.stagedMelds.isEmpty) return; // Guard: nothing to confirm
+
     if (state.mode == GameMode.online) {
-      for (final staged in state.stagedMelds) {
+      // Deduplicate staged melds (same logic as offline)
+      final seenCardIds = <int>{};
+      final uniqueStagedMelds = <StagedMeld>[];
+      for (final m in state.stagedMelds) {
+        if (m.cardIds.any((id) => seenCardIds.contains(id))) continue;
+        seenCardIds.addAll(m.cardIds);
+        uniqueStagedMelds.add(m);
+      }
+
+      for (final staged in uniqueStagedMelds) {
         _socket.emit('game_action', {
           'action': {'type': 'meld', 'cardIds': staged.cardIds}
         });
@@ -558,6 +569,37 @@ class GameNotifier extends StateNotifier<GameProviderState> {
 
   /// Reorder a group of selected cards, moving them all to [targetIndex] in the visible hand.
   void reorderGroup(List<int> cardIds, int targetIndex) {
+    if (state.mode == GameMode.online) {
+      final order = [...state.onlineHandOrder];
+      final stagedIds = state.stagedMelds.expand((m) => m.cardIds).toSet();
+      final visibleOrder = order.where((id) => !stagedIds.contains(id)).toList();
+
+      final groupIdSet = cardIds.toSet();
+      final groupCards = visibleOrder.where((id) => groupIdSet.contains(id)).toList();
+      final remaining = visibleOrder.where((id) => !groupIdSet.contains(id)).toList();
+      final clamped = targetIndex.clamp(0, remaining.length);
+      remaining.insertAll(clamped, groupCards);
+
+      // Rebuild full order: staged cards stay in place, visible cards in new order
+      final newOrder = <int>[];
+      int vi = 0;
+      for (final id in order) {
+        if (stagedIds.contains(id)) {
+          newOrder.add(id);
+        } else {
+          if (vi < remaining.length) newOrder.add(remaining[vi++]);
+        }
+      }
+      while (vi < remaining.length) { newOrder.add(remaining[vi++]); }
+
+      state = state.copyWith(
+        onlineHandOrder: newOrder,
+        selectedCardIds: [],
+        clearNewlyDrawn: true,
+      );
+      return;
+    }
+
     final engine = state.offlineEngine;
     if (engine == null) return;
     final hand = engine.state.currentPlayer.hand;

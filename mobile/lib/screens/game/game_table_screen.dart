@@ -293,6 +293,8 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> with WidgetsB
                     : null,
                 onDrawDiscard: isMyTurn && turnStep == 'draw' && topDiscard != null
                     && !(isOffline && engine != null && engine.isDiscardDuplicate())
+                    && !(!isOffline && topDiscard != null && !topDiscard!.isJoker && config.duplicateProtection
+                        && myHand.any((c) => !c.isJoker && c.rank == topDiscard!.rank && c.suit == topDiscard!.suit))
                     ? () { SfxService.instance.cardDraw(); _confirmDrawFromDiscard(context, notifier, isOffline, hasOpened, config); }
                     : null,
                 // Tap on a meld to lay off selected card

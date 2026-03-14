@@ -9,6 +9,9 @@ bool isValidSet(List<Card> cards, GameConfig config) {
   final jokers = cards.where((c) => c.isJoker).toList();
   final normals = cards.where((c) => !c.isJoker).toList();
 
+  // Max jokers per meld check (matching server)
+  if (jokers.length > config.maxJokersPerMeld) return false;
+
   // Need at least 1 real card to determine rank
   if (normals.isEmpty) return false;
 
@@ -27,6 +30,9 @@ bool isValidRun(List<Card> cards, GameConfig config) {
 
   final jokers = cards.where((c) => c.isJoker).toList();
   final normals = cards.where((c) => !c.isJoker).toList();
+
+  // Max jokers per meld check (matching server)
+  if (jokers.length > config.maxJokersPerMeld) return false;
 
   // Need at least 1 real card to determine suit/rank anchor
   if (normals.isEmpty) return false;

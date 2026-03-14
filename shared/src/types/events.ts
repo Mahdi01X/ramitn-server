@@ -152,6 +152,7 @@ export interface SanitizedPlayer {
   melds: import('./meld').Meld[];
   totalScore: number;
   hasOpened: boolean;
+  openingScore: number;
   isBot: boolean;
   isConnected: boolean;
 }

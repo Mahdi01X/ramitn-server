@@ -446,17 +446,23 @@ class _StagedMeldsZone extends StatelessWidget {
             spacing: 8, runSpacing: 4, alignment: WrapAlignment.center,
             children: staged.map((m) => Container(
               padding: const EdgeInsets.all(3),
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width - 60,
+              ),
               decoration: BoxDecoration(
                 color: const Color(0xFF4CAF50).withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.4)),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: m.cards.map((c) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 1),
-                  child: PlayingCard(card: c, width: 28, height: 42),
-                )).toList(),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: m.cards.map((c) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 1),
+                    child: PlayingCard(card: c, width: 28, height: 42),
+                  )).toList(),
+                ),
               ),
             )).toList(),
           ),
@@ -683,25 +689,33 @@ class _MeldDropTarget extends StatelessWidget {
                     BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2)),
                   ],
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ...meld.cards.map((c) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 1),
-                      child: PlayingCard(card: c, width: 30, height: 44),
-                    )),
-                    if (highlight)
-                      Container(
-                        width: 30, height: 44,
-                        margin: const EdgeInsets.only(left: 2),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: const Color(0xFF4CAF50), width: 2),
-                          color: const Color(0xFF4CAF50).withOpacity(0.2),
-                        ),
-                        child: const Center(child: Icon(Icons.add, color: Color(0xFF4CAF50), size: 16)),
-                      ),
-                  ],
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width - 40,
+                  ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ...meld.cards.map((c) => Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 1),
+                          child: PlayingCard(card: c, width: 30, height: 44),
+                        )),
+                        if (highlight)
+                          Container(
+                            width: 30, height: 44,
+                            margin: const EdgeInsets.only(left: 2),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: const Color(0xFF4CAF50), width: 2),
+                              color: const Color(0xFF4CAF50).withOpacity(0.2),
+                            ),
+                            child: const Center(child: Icon(Icons.add, color: Color(0xFF4CAF50), size: 16)),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 2),

@@ -6,6 +6,7 @@ import { GameState, GamePhase, TurnStep, GameAction, GameError } from '../types/
 import { createDeck, shuffle, deal } from './deck';
 import { drawFromDeck, drawFromDiscard, meld, confirmOpening, cancelStaging, layoff, replaceJoker, discard } from './turn';
 import { calculateRoundScores, checkGameEnd } from './scoring';
+import { calculateMeldPoints } from './meld-validator';
 
 let gameIdCounter = 0;
 
@@ -294,6 +295,7 @@ export function sanitizeStateForPlayer(
       melds: p.melds,
       totalScore: p.totalScore,
       hasOpened: p.hasOpened,
+      openingScore: p.hasOpened ? p.melds.reduce((sum, m) => sum + calculateMeldPoints(m, state.config), 0) : 0,
       isBot: p.isBot,
       isConnected: p.isConnected,
     })),
