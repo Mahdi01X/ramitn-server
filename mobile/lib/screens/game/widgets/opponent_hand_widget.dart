@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../../core/theme.dart';
 import 'playing_card.dart';
 import '../../../models/card.dart' as models;
 
@@ -22,8 +23,8 @@ class OpponentInfo {
   });
 }
 
-/// Shows opponent(s) cards face-down in a realistic inverted arc at top of screen.
-/// Adapts to any screen size. Multiple opponents are shown side by side.
+/// Premium opponent hand display with animated badges, glowing active indicators,
+/// and realistic inverted card fan. Multiple opponents side by side.
 class OpponentHandWidget extends StatelessWidget {
   final List<OpponentInfo> opponents;
 
@@ -34,7 +35,6 @@ class OpponentHandWidget extends StatelessWidget {
   final bool _hasOpened;
   final int _openingScore;
 
-  /// Multi-opponent constructor (preferred).
   const OpponentHandWidget.multi({
     super.key,
     required this.opponents,
@@ -45,7 +45,6 @@ class OpponentHandWidget extends StatelessWidget {
         _hasOpened = false,
         _openingScore = 0;
 
-  /// Single-opponent constructor (backward compatible).
   const OpponentHandWidget({
     super.key,
     required int cardCount,
@@ -88,7 +87,6 @@ class OpponentHandWidget extends StatelessWidget {
       return _SingleOpponentSection(opponent: opps.first);
     }
 
-    // Multiple opponents side by side
     return Container(
       height: 88,
       decoration: BoxDecoration(
@@ -96,7 +94,7 @@ class OpponentHandWidget extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            const Color(0xFF2C1508).withOpacity(0.85),
+            const Color(0xFF2C1508).withOpacity(0.9),
             const Color(0xFF1A3D1A).withOpacity(0.0),
           ],
         ),
@@ -116,7 +114,7 @@ class OpponentHandWidget extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.white.withOpacity(0.1),
+                      CafeTunisienColors.gold.withOpacity(0.15),
                       Colors.transparent,
                     ],
                   ),
@@ -129,7 +127,6 @@ class OpponentHandWidget extends StatelessWidget {
   }
 }
 
-/// Renders a single opponent's fan of face-down cards + animated name badge.
 class _SingleOpponentSection extends StatelessWidget {
   final OpponentInfo opponent;
   const _SingleOpponentSection({required this.opponent});
@@ -143,28 +140,29 @@ class _SingleOpponentSection extends StatelessWidget {
         return Stack(
           clipBehavior: Clip.none,
           children: [
-            // Inverted fan of face-down cards (arc curves upward)
+            // Inverted fan of face-down cards
             if (opponent.handCount > 0)
               ..._buildInvertedFan(opponent.handCount, width),
 
-            // Active turn glow
+            // Active turn glow bar
             if (opponent.isActive)
               Positioned(
                 top: 0,
-                left: width * 0.2,
-                right: width * 0.2,
+                left: width * 0.15,
+                right: width * 0.15,
                 height: 3,
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(2),
                     gradient: const LinearGradient(
-                      colors: [Colors.transparent, Color(0xFFFFD700), Colors.transparent],
+                      colors: [Colors.transparent, Color(0xFFFFD700), Color(0xFFFFF8E1), Color(0xFFFFD700), Colors.transparent],
+                      stops: [0.0, 0.2, 0.5, 0.8, 1.0],
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFFD700).withOpacity(0.5),
-                        blurRadius: 8,
-                        spreadRadius: 2,
+                        color: const Color(0xFFFFD700).withOpacity(0.6),
+                        blurRadius: 10,
+                        spreadRadius: 3,
                       ),
                     ],
                   ),
@@ -186,12 +184,9 @@ class _SingleOpponentSection extends StatelessWidget {
     );
   }
 
-  /// Build an inverted arc (cards fan outward from top, curving down).
   List<Widget> _buildInvertedFan(int n, double width) {
-    // Adaptive card size for opponent
     final maxCardW = 30.0;
     final minCardW = 18.0;
-    // Calculate needed width
     final overlapRatio = n <= 5 ? 0.5 : (0.3 + (4 / n) * 0.2).clamp(0.22, 0.5);
     final neededW = n > 1 ? maxCardW + (n - 1) * maxCardW * overlapRatio : maxCardW;
     final available = width - 20;
@@ -208,14 +203,13 @@ class _SingleOpponentSection extends StatelessWidget {
       final t = n > 1 ? (i / (n - 1)) - 0.5 : 0.0;
       final angle = t * maxAngle * (pi / 180);
       final x = centerX + fanR * sin(angle) - cardW / 2;
-      // Inverted: cards at edges go DOWN (opposite of player hand)
       final y = 6 + fanR * (1 - cos(angle)) * 0.05;
 
       return Positioned(
         left: x,
         top: y,
         child: Transform.rotate(
-          angle: -angle * 0.5, // Inverted rotation (opposite direction)
+          angle: -angle * 0.5,
           alignment: Alignment.topCenter,
           child: PlayingCard(
             card: dummyCard,
@@ -229,7 +223,7 @@ class _SingleOpponentSection extends StatelessWidget {
   }
 }
 
-/// Animated name badge for an opponent with turn indicator and info.
+/// Premium animated name badge with glass effect
 class _OpponentBadge extends StatelessWidget {
   final OpponentInfo opponent;
   const _OpponentBadge({required this.opponent});
@@ -240,11 +234,11 @@ class _OpponentBadge extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeOutCubic,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isActive
-            ? const Color(0xFFD4A017).withOpacity(0.95)
-            : Colors.black.withOpacity(0.5),
+        gradient: isActive
+            ? const LinearGradient(colors: [Color(0xFFD4A017), Color(0xFFE8A317)])
+            : LinearGradient(colors: [Colors.black.withOpacity(0.6), Colors.black.withOpacity(0.4)]),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isActive
@@ -255,13 +249,13 @@ class _OpponentBadge extends StatelessWidget {
         boxShadow: [
           if (isActive)
             BoxShadow(
-              color: const Color(0xFFFFD700).withOpacity(0.4),
-              blurRadius: 12,
-              spreadRadius: 1,
+              color: const Color(0xFFFFD700).withOpacity(0.5),
+              blurRadius: 14,
+              spreadRadius: 2,
             ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 4,
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -270,9 +264,16 @@ class _OpponentBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (isActive)
-            const Padding(
-              padding: EdgeInsets.only(right: 4),
-              child: Text('▶', style: TextStyle(fontSize: 8, color: Colors.white)),
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Container(
+                width: 6, height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  boxShadow: [BoxShadow(color: Colors.white.withOpacity(0.5), blurRadius: 4)],
+                ),
+              ),
             ),
           Text(
             opponent.name,
@@ -280,30 +281,42 @@ class _OpponentBadge extends StatelessWidget {
               color: isActive ? Colors.white : Colors.white70,
               fontSize: 10,
               fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+              shadows: isActive ? [const Shadow(color: Colors.black26, blurRadius: 4)] : null,
             ),
           ),
           const SizedBox(width: 5),
           // Card count badge
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withOpacity(isActive ? 0.2 : 0.1),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Text(
-              '${opponent.handCount}🃏',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.6),
-                fontSize: 9,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${opponent.handCount}',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(isActive ? 0.9 : 0.6),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 1),
+                Text('🃏', style: TextStyle(fontSize: 8)),
+              ],
             ),
           ),
           if (opponent.hasOpened) ...[
             const SizedBox(width: 4),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(
-                color: const Color(0xFF4CAF50).withOpacity(0.35),
+                gradient: LinearGradient(colors: [
+                  const Color(0xFF4CAF50).withOpacity(0.4),
+                  const Color(0xFF4CAF50).withOpacity(0.2),
+                ]),
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.5), width: 0.5),
               ),

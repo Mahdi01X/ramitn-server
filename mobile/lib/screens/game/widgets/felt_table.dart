@@ -1,12 +1,16 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../models/card.dart' as models;
 import '../../../models/meld.dart';
 import '../../../engine/meld_validator.dart';
 import '../../../models/game_config.dart';
 import '../../../providers/game_provider.dart';
+import '../../../core/theme.dart';
 import 'playing_card.dart';
 
-/// Green-felt table area — draw pile, discard area, placed melds
+/// Premium green-felt table area — draw pile, discard area, placed melds
+/// Enhanced with overhead lamp spotlight, wood border trim, corner flourishes,
+/// and a realistic multi-stop felt gradient.
 class FeltTable extends StatelessWidget {
   final int drawPileCount;
   final models.Card? topDiscard;
@@ -23,7 +27,6 @@ class FeltTable extends StatelessWidget {
   final void Function(String meldId)? onTapMeld;
   final models.Card? selectedCard;
   final GameConfig config;
-  // Player info for grouped melds display
   final String currentPlayerId;
   final List<({String id, String name, int openingScore, bool hasOpened})> playerInfos;
 
@@ -51,7 +54,6 @@ class FeltTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DragTarget<int>(
-      // Accept cards dragged from hand for discard (anywhere on the table)
       onWillAcceptWithDetails: (details) =>
           onDropDiscard != null && isMyTurn && turnStep == 'play',
       onAcceptWithDetails: (details) => onDropDiscard?.call(details.data),
@@ -59,16 +61,18 @@ class FeltTable extends StatelessWidget {
         final isDroppingOnTable = candidateData.isNotEmpty;
         return Container(
           decoration: BoxDecoration(
+            // Enhanced 5-stop radial gradient for realistic felt
             gradient: RadialGradient(
-              center: Alignment.center,
-              radius: 1.0,
+              center: const Alignment(0, -0.2),
+              radius: 1.1,
               colors: [
-                isDroppingOnTable ? const Color(0xFF3E8D42) : const Color(0xFF367D3A),
+                isDroppingOnTable ? const Color(0xFF4E9D52) : const Color(0xFF3E8D42),
+                const Color(0xFF367D3A),
                 const Color(0xFF256B28),
                 const Color(0xFF1B5E20),
                 const Color(0xFF0D3B13),
               ],
-              stops: const [0.0, 0.3, 0.6, 1.0],
+              stops: const [0.0, 0.2, 0.45, 0.7, 1.0],
             ),
             border: isDroppingOnTable
                 ? Border.all(color: Colors.redAccent.withOpacity(0.5), width: 2)
@@ -76,30 +80,74 @@ class FeltTable extends StatelessWidget {
           ),
           child: Stack(
             children: [
+              // Felt texture
               Positioned.fill(child: CustomPaint(painter: _FeltTexturePainter())),
+
+              // Overhead lamp spotlight effect
               Positioned.fill(
                 child: Container(
-                  margin: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFD4A017).withOpacity(0.15), width: 2),
+                    gradient: RadialGradient(
+                      center: const Alignment(0, -0.5),
+                      radius: 0.8,
+                      colors: [
+                        const Color(0xFFFFF8E1).withOpacity(0.06),
+                        const Color(0xFFFFD700).withOpacity(0.02),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.3, 1.0],
+                    ),
                   ),
                 ),
               ),
-              // Hint when dragging a card onto the table
+
+              // Inner wood border trim with gold line
+              Positioned.fill(
+                child: Container(
+                  margin: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: const Color(0xFFD4A017).withOpacity(0.18),
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Corner flourish dots
+              ..._buildCornerDots(),
+
+              // Dark edge vignette
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.center,
+                      radius: 1.2,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.2),
+                      ],
+                      stops: const [0.5, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Discard hint when dragging
               if (isDroppingOnTable)
                 Positioned(
-                  bottom: 8,
-                  left: 0,
-                  right: 0,
+                  bottom: 8, left: 0, right: 0,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.redAccent.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.redAccent.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(14),
                         boxShadow: [
-                          BoxShadow(color: Colors.redAccent.withOpacity(0.4), blurRadius: 12),
+                          BoxShadow(color: Colors.redAccent.withOpacity(0.5), blurRadius: 16, spreadRadius: 2),
+                          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3)),
                         ],
                       ),
                       child: const Row(
@@ -114,6 +162,8 @@ class FeltTable extends StatelessWidget {
                     ),
                   ),
                 ),
+
+              // Main content
               Column(
                 children: [
                   const SizedBox(height: 8),
@@ -152,6 +202,40 @@ class FeltTable extends StatelessWidget {
       },
     );
   }
+
+  /// Gold corner dots at each corner of the border trim
+  List<Widget> _buildCornerDots() {
+    const dotSize = 6.0;
+    const inset = 6.0;
+    final color = const Color(0xFFD4A017).withOpacity(0.35);
+    return [
+      Positioned(top: inset, left: inset, child: _CornerDot(size: dotSize, color: color)),
+      Positioned(top: inset, right: inset, child: _CornerDot(size: dotSize, color: color)),
+      Positioned(bottom: inset, left: inset, child: _CornerDot(size: dotSize, color: color)),
+      Positioned(bottom: inset, right: inset, child: _CornerDot(size: dotSize, color: color)),
+    ];
+  }
+}
+
+class _CornerDot extends StatelessWidget {
+  final double size;
+  final Color color;
+  const _CornerDot({required this.size, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        boxShadow: [
+          BoxShadow(color: color.withOpacity(0.5), blurRadius: 4, spreadRadius: 1),
+        ],
+      ),
+    );
+  }
 }
 
 // ─── Pile Zone (draw + discard drop target) ──────────────────
@@ -180,7 +264,7 @@ class _PileZone extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Draw pile — Draggable: drag a card from the pile to your hand
+        // Draw pile
         canDraw
             ? LongPressDraggable<String>(
                 data: 'drawn_card',
@@ -221,7 +305,6 @@ class _PileZone extends StatelessWidget {
                   child: _deckStack(true),
                 ),
                 onDragCompleted: () {
-                  // Drag completed → card accepted by hand → trigger draw
                   onDrawDeck?.call();
                 },
                 child: GestureDetector(
@@ -231,7 +314,7 @@ class _PileZone extends StatelessWidget {
               )
             : _deckStack(false),
         const SizedBox(width: 28),
-        // Discard pile — also a DragTarget for discarding cards
+        // Discard pile
         DragTarget<int>(
           key: const ValueKey('discard_pile'),
           onWillAcceptWithDetails: (details) => canDrop,
@@ -255,7 +338,10 @@ class _PileZone extends StatelessWidget {
                     width: isHovering ? 3 : canDraw && topDiscard != null ? 2 : 1,
                   ),
                   boxShadow: isHovering
-                      ? [BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.5), blurRadius: 16)]
+                      ? [
+                          BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.5), blurRadius: 16),
+                          BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.2), blurRadius: 30, spreadRadius: 4),
+                        ]
                       : canDraw && topDiscard != null
                           ? [BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.3), blurRadius: 10)]
                           : null,
@@ -316,6 +402,9 @@ class _PileZone extends StatelessWidget {
               color: const Color(0xFF3E2113),
               borderRadius: BorderRadius.circular(6),
               border: Border.all(color: const Color(0xFFD4A017), width: 0.5),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 4),
+              ],
             ),
             child: Text('$drawCount',
               style: const TextStyle(color: Color(0xFFFFD700), fontSize: 9, fontWeight: FontWeight.bold)),
@@ -347,7 +436,7 @@ class _PileZone extends StatelessWidget {
   }
 }
 
-// ─── Status Badge (pulsing) ──────────────────────────────────
+// ─── Status Badge (pulsing with enhanced glow) ──────────────────
 
 class _StatusBadge extends StatefulWidget {
   final bool isMyTurn;
@@ -389,13 +478,21 @@ class _StatusBadgeState extends State<_StatusBadge> with SingleTickerProviderSta
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.9),
+            gradient: LinearGradient(
+              colors: [color.withOpacity(0.95), color.withOpacity(0.8)],
+            ),
             borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withOpacity(0.3), width: 0.5),
             boxShadow: [
               BoxShadow(
                 color: color.withOpacity(glow * 0.5),
-                blurRadius: 12 * glow,
-                spreadRadius: 1,
+                blurRadius: 14 * glow,
+                spreadRadius: 2,
+              ),
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -410,7 +507,12 @@ class _StatusBadgeState extends State<_StatusBadge> with SingleTickerProviderSta
               const SizedBox(width: 6),
               Text(
                 isDraw ? 'Piochez une carte' : 'Sélectionnez et jouez',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  shadows: [Shadow(color: Colors.black26, blurRadius: 4)],
+                ),
               ),
             ],
           ),
@@ -430,18 +532,33 @@ class _StagedMeldsZone extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFD700).withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.3), width: 1),
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFFFFD700).withOpacity(0.1),
+            const Color(0xFFFFD700).withOpacity(0.04),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.35), width: 1),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('🔓 Paquets en attente d\'ouverture',
-            style: TextStyle(color: const Color(0xFFFFD700).withOpacity(0.7), fontSize: 10)),
-          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_open_rounded, color: const Color(0xFFFFD700).withOpacity(0.6), size: 13),
+              const SizedBox(width: 4),
+              Text('Paquets en attente d\'ouverture',
+                style: TextStyle(color: const Color(0xFFFFD700).withOpacity(0.7), fontSize: 10, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 6),
           Wrap(
             spacing: 8, runSpacing: 4, alignment: WrapAlignment.center,
             children: staged.map((m) => Container(
@@ -450,6 +567,9 @@ class _StagedMeldsZone extends StatelessWidget {
                 color: const Color(0xFF4CAF50).withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.4)),
+                boxShadow: [
+                  BoxShadow(color: const Color(0xFF4CAF50).withOpacity(0.1), blurRadius: 6),
+                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -497,15 +617,21 @@ class _MeldsZone extends StatelessWidget {
   Widget build(BuildContext context) {
     if (melds.isEmpty) {
       return Center(
-        child: Text(
-          '☕ Table vide — posez vos combinaisons',
-          style: TextStyle(color: Colors.white.withOpacity(0.12), fontSize: 13),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('☕', style: TextStyle(fontSize: 24, color: Colors.white.withOpacity(0.08))),
+            const SizedBox(height: 4),
+            Text(
+              'Table vide — posez vos combinaisons',
+              style: TextStyle(color: Colors.white.withOpacity(0.1), fontSize: 12, fontStyle: FontStyle.italic),
+            ),
+          ],
         ),
       );
     }
 
-    // Group melds by owner
-    final otherMelds = <String, List<Meld>>{}; // ownerId -> melds
+    final otherMelds = <String, List<Meld>>{};
     final myMelds = <Meld>[];
     final unknownMelds = <Meld>[];
 
@@ -523,18 +649,12 @@ class _MeldsZone extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Column(
         children: [
-          // Other players' melds (top)
           for (final entry in otherMelds.entries)
             _buildPlayerMeldsSection(entry.key, entry.value, false),
-
-          // Unknown melds (legacy)
           if (unknownMelds.isNotEmpty)
             _buildMeldsWrap(unknownMelds),
-
-          // My melds (bottom, closer to my hand)
           if (myMelds.isNotEmpty)
             _buildPlayerMeldsSection(currentPlayerId, myMelds, true),
-
           const SizedBox(height: 8),
         ],
       ),
@@ -551,29 +671,43 @@ class _MeldsZone extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.25), width: 1),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [color.withOpacity(0.1), color.withOpacity(0.04)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 6, offset: const Offset(0, 2)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: player name + opening score
           Row(
             children: [
-              Icon(isMe ? Icons.person : Icons.person_outline,
-                  color: color.withOpacity(0.7), size: 14),
-              const SizedBox(width: 4),
+              Container(
+                width: 20, height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withOpacity(0.2),
+                ),
+                child: Icon(isMe ? Icons.person : Icons.person_outline,
+                    color: color.withOpacity(0.8), size: 12),
+              ),
+              const SizedBox(width: 6),
               Text(name, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
               const Spacer(),
               if (opened)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
+                    gradient: LinearGradient(colors: [color.withOpacity(0.25), color.withOpacity(0.1)]),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withOpacity(0.3), width: 0.5),
                   ),
                   child: Text(
                     'Ouverture: ${openScore}pts',
@@ -582,7 +716,7 @@ class _MeldsZone extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           _buildMeldsWrap(playerMelds),
         ],
       ),
@@ -610,8 +744,7 @@ class _MeldsZone extends StatelessWidget {
   }
 }
 
-/// Each meld on the table — colored border by type (blue=run, orange=set)
-/// When a compatible card is selected, glows green and is tappable for layoff
+/// Each meld on the table — colored border by type, with premium shadows
 class _MeldDropTarget extends StatelessWidget {
   final Meld meld;
   final bool canAccept;
@@ -666,8 +799,8 @@ class _MeldDropTarget extends StatelessWidget {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.black.withOpacity(0.22),
-                            Colors.black.withOpacity(0.12),
+                            Colors.black.withOpacity(0.25),
+                            Colors.black.withOpacity(0.1),
                           ],
                         ),
                   borderRadius: BorderRadius.circular(10),
@@ -680,7 +813,7 @@ class _MeldDropTarget extends StatelessWidget {
                       BoxShadow(color: const Color(0xFF4CAF50).withOpacity(0.5), blurRadius: 16, spreadRadius: 2)
                     else
                       BoxShadow(color: borderColor.withOpacity(0.12), blurRadius: 6),
-                    BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2)),
+                    BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 6, offset: const Offset(0, 3)),
                   ],
                 ),
                 child: Row(
@@ -737,34 +870,37 @@ class _MeldDropTarget extends StatelessWidget {
   }
 }
 
-// ─── Felt Texture Painter ────────────────────────────────────
+// ─── Enhanced Felt Texture Painter ────────────────────────────
 
 class _FeltTexturePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // Right-leaning diagonal lines (thread texture)
     final paint = Paint()
-      ..color = Colors.black.withOpacity(0.03)
+      ..color = Colors.black.withOpacity(0.035)
       ..strokeWidth = 0.5;
-    for (double i = -size.height; i < size.width + size.height; i += 8) {
+    for (double i = -size.height; i < size.width + size.height; i += 7) {
       canvas.drawLine(Offset(i, 0), Offset(i + size.height, size.height), paint);
     }
     // Left-leaning cross-hatch
     final paint2 = Paint()
-      ..color = Colors.white.withOpacity(0.015)
+      ..color = Colors.white.withOpacity(0.018)
       ..strokeWidth = 0.3;
-    for (double i = 0; i < size.width + size.height; i += 11) {
+    for (double i = 0; i < size.width + size.height; i += 10) {
       canvas.drawLine(Offset(i, size.height), Offset(i - size.height, 0), paint2);
     }
-    // Subtle center spotlight (warm tone)
+
+    // Warm center spotlight (overhead lamp)
     final spotlight = Paint()
       ..shader = RadialGradient(
-        center: Alignment.center,
-        radius: 0.55,
+        center: const Alignment(0, -0.3),
+        radius: 0.5,
         colors: [
-          const Color(0xFFFFD700).withOpacity(0.03),
+          const Color(0xFFFFD700).withOpacity(0.04),
+          const Color(0xFFFFF8E1).withOpacity(0.015),
           Colors.transparent,
         ],
+        stops: const [0.0, 0.4, 1.0],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), spotlight);
 
@@ -775,17 +911,24 @@ class _FeltTexturePainter extends CustomPainter {
         radius: 1.0,
         colors: [
           Colors.transparent,
-          Colors.black.withOpacity(0.15),
+          Colors.black.withOpacity(0.18),
         ],
-        stops: const [0.6, 1.0],
+        stops: const [0.55, 1.0],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), vignette);
+
+    // Subtle noise dots for felt grain
+    final rng = Random(77);
+    final noisePaint = Paint()
+      ..color = Colors.black.withOpacity(0.015)
+      ..strokeWidth = 0.4;
+    for (int i = 0; i < 120; i++) {
+      final x = rng.nextDouble() * size.width;
+      final y = rng.nextDouble() * size.height;
+      canvas.drawCircle(Offset(x, y), 0.4 + rng.nextDouble() * 0.4, noisePaint);
+    }
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
-
-
-

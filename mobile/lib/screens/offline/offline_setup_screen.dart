@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../models/game_config.dart';
@@ -13,7 +14,8 @@ class OfflineSetupScreen extends ConsumerStatefulWidget {
   ConsumerState<OfflineSetupScreen> createState() => _OfflineSetupScreenState();
 }
 
-class _OfflineSetupScreenState extends ConsumerState<OfflineSetupScreen> {
+class _OfflineSetupScreenState extends ConsumerState<OfflineSetupScreen>
+    with SingleTickerProviderStateMixin {
   int _numHumans = 2;
   int _numBots = 0;
   int _openingThreshold = 71;
@@ -23,10 +25,22 @@ class _OfflineSetupScreenState extends ConsumerState<OfflineSetupScreen> {
   final _playerNames = List.generate(4, (i) => 'Joueur ${i + 1}');
   final _nameControllers = List.generate(4, (i) => TextEditingController(text: ''));
 
+  late AnimationController _entryCtrl;
+
   int get _totalPlayers => _numHumans + _numBots;
 
   @override
+  void initState() {
+    super.initState();
+    _entryCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..forward();
+  }
+
+  @override
   void dispose() {
+    _entryCtrl.dispose();
     for (final c in _nameControllers) c.dispose();
     super.dispose();
   }
@@ -45,7 +59,7 @@ class _OfflineSetupScreenState extends ConsumerState<OfflineSetupScreen> {
           SafeArea(
             child: Column(
             children: [
-              // ─── Header ──────────────────────────────
+              // Header
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
@@ -58,13 +72,19 @@ class _OfflineSetupScreenState extends ConsumerState<OfflineSetupScreen> {
                           shape: BoxShape.circle,
                           color: Colors.white.withOpacity(0.08),
                           border: Border.all(color: CafeTunisienColors.glassBorder),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 6),
+                          ],
                         ),
                         child: const Icon(Icons.arrow_back_ios_new_rounded, color: CafeTunisienColors.goldLight, size: 18),
                       ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
-                      child: Text('☕ Nouvelle Partie', style: AppTextStyles.titleLarge.copyWith(color: CafeTunisienColors.goldLight)),
+                      child: Text('☕ Nouvelle Partie', style: AppTextStyles.titleLarge.copyWith(
+                        color: CafeTunisienColors.goldLight,
+                        shadows: [Shadow(color: CafeTunisienColors.gold.withOpacity(0.3), blurRadius: 8)],
+                      )),
                     ),
                   ],
                 ),
@@ -72,158 +92,178 @@ class _OfflineSetupScreenState extends ConsumerState<OfflineSetupScreen> {
               const GoldDivider(width: 120),
               const SizedBox(height: 8),
 
-              // ─── Body ────────────────────────────────
+              // Body
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Players Section
-                      _SectionHeader(icon: '👥', title: 'Joueurs'),
-                      const SizedBox(height: 10),
-                      GlassCard(
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                        child: Column(
-                          children: [
-                            _StepperRow(icon: Icons.person, label: 'Humains', value: _numHumans, min: 1, max: 4,
-                              onChanged: (v) => setState(() {
-                                _numHumans = v;
-                                if (_totalPlayers > 4) _numBots = 4 - _numHumans;
-                                if (_totalPlayers < 2 && _numBots == 0) _numBots = 1;
-                              }),
-                            ),
-                            Divider(color: Colors.white.withOpacity(0.06), height: 1),
-                            _StepperRow(icon: Icons.smart_toy, label: 'Bots', value: _numBots, min: 0, max: 4 - _numHumans,
-                              onChanged: (v) => setState(() => _numBots = v),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (_totalPlayers < 2)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Row(
+                child: AnimatedBuilder(
+                  animation: _entryCtrl,
+                  builder: (context, _) {
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildAnimatedSection(0, child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.warning_amber_rounded, color: CafeTunisienColors.warmRed, size: 15),
-                              const SizedBox(width: 6),
-                              Text('Il faut au moins 2 joueurs', style: AppTextStyles.bodySmall.copyWith(color: CafeTunisienColors.warmRed)),
-                            ],
-                          ),
-                        ),
-                      const SizedBox(height: 20),
-
-                      // Names Section
-                      _SectionHeader(icon: '✏️', title: 'Pseudos'),
-                      const SizedBox(height: 10),
-                      GlassCard(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          children: List.generate(_numHumans, (i) => Padding(
-                            padding: EdgeInsets.only(bottom: i < _numHumans - 1 ? 10 : 0),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 30, height: 30,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: [CafeTunisienColors.gold.withOpacity(0.3), CafeTunisienColors.gold.withOpacity(0.1)],
+                              _SectionHeader(icon: '👥', title: 'Joueurs'),
+                              const SizedBox(height: 10),
+                              GlassCard(
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                                innerGlow: true,
+                                child: Column(
+                                  children: [
+                                    _StepperRow(icon: Icons.person, label: 'Humains', value: _numHumans, min: 1, max: 4,
+                                      onChanged: (v) => setState(() {
+                                        _numHumans = v;
+                                        if (_totalPlayers > 4) _numBots = 4 - _numHumans;
+                                        if (_totalPlayers < 2 && _numBots == 0) _numBots = 1;
+                                      }),
                                     ),
-                                  ),
-                                  child: Center(child: Text('${i + 1}', style: AppTextStyles.labelGold.copyWith(fontSize: 12))),
+                                    Divider(color: CafeTunisienColors.gold.withOpacity(0.06), height: 1),
+                                    _StepperRow(icon: Icons.smart_toy, label: 'Bots', value: _numBots, min: 0, max: 4 - _numHumans,
+                                      onChanged: (v) => setState(() => _numBots = v),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _nameControllers[i],
-                                    style: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
-                                    decoration: InputDecoration(
-                                      isDense: true,
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                      hintText: 'Ton pseudo',
-                                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.15)),
-                                      filled: true,
-                                      fillColor: Colors.white.withOpacity(0.05),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: CafeTunisienColors.gold, width: 1.5)),
-                                    ),
-                                    onChanged: (v) => _playerNames[i] = v.isEmpty ? 'Joueur ${i + 1}' : v,
+                              ),
+                              if (_totalPlayers < 2)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.warning_amber_rounded, color: CafeTunisienColors.warmRed, size: 15),
+                                      const SizedBox(width: 6),
+                                      Text('Il faut au moins 2 joueurs', style: AppTextStyles.bodySmall.copyWith(color: CafeTunisienColors.warmRed)),
+                                    ],
                                   ),
+                                ),
+                            ],
+                          )),
+                          const SizedBox(height: 20),
+
+                          _buildAnimatedSection(1, child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _SectionHeader(icon: '✏️', title: 'Pseudos'),
+                              const SizedBox(height: 10),
+                              GlassCard(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  children: List.generate(_numHumans, (i) => Padding(
+                                    padding: EdgeInsets.only(bottom: i < _numHumans - 1 ? 10 : 0),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 30, height: 30,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            gradient: LinearGradient(
+                                              colors: [CafeTunisienColors.gold.withOpacity(0.3), CafeTunisienColors.gold.withOpacity(0.1)],
+                                            ),
+                                            border: Border.all(color: CafeTunisienColors.gold.withOpacity(0.2)),
+                                          ),
+                                          child: Center(child: Text('${i + 1}', style: AppTextStyles.labelGold.copyWith(fontSize: 12))),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: TextField(
+                                            controller: _nameControllers[i],
+                                            style: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
+                                            decoration: InputDecoration(
+                                              isDense: true,
+                                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                              hintText: 'Ton pseudo',
+                                              hintStyle: TextStyle(color: Colors.white.withOpacity(0.15)),
+                                              filled: true,
+                                              fillColor: Colors.white.withOpacity(0.05),
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: CafeTunisienColors.gold, width: 1.5)),
+                                            ),
+                                            onChanged: (v) => _playerNames[i] = v.isEmpty ? 'Joueur ${i + 1}' : v,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )),
+                                ),
+                              ),
+                            ],
+                          )),
+                          const SizedBox(height: 20),
+
+                          _buildAnimatedSection(2, child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _SectionHeader(icon: '⚙️', title: 'Paramètres'),
+                              const SizedBox(height: 10),
+                              GlassCard(
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                                innerGlow: true,
+                                child: Column(
+                                  children: [
+                                    _StepperRow(icon: Icons.lock_open, label: 'Seuil d\'ouverture', value: _openingThreshold, min: 0, max: 151, step: 10, suffix: ' pts',
+                                      onChanged: (v) => setState(() => _openingThreshold = v)),
+                                    Divider(color: CafeTunisienColors.gold.withOpacity(0.06), height: 1),
+                                    _StepperRow(icon: Icons.repeat, label: 'Manches', value: _maxRounds, min: 1, max: 20,
+                                      onChanged: (v) => setState(() => _maxRounds = v)),
+                                    Divider(color: CafeTunisienColors.gold.withOpacity(0.06), height: 1),
+                                    _StepperRow(icon: Icons.style, label: 'Jokers', value: _numJokers, min: 0, max: 8,
+                                      onChanged: (v) => setState(() => _numJokers = v)),
+                                    Divider(color: CafeTunisienColors.gold.withOpacity(0.06), height: 1),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.verified_outlined, color: CafeTunisienColors.gold, size: 20),
+                                          const SizedBox(width: 10),
+                                          Expanded(child: Text('Suite sans joker', style: AppTextStyles.bodyMedium)),
+                                          Switch.adaptive(
+                                            value: _openingRequiresCleanRun,
+                                            onChanged: (v) => setState(() => _openingRequiresCleanRun = v),
+                                            activeColor: CafeTunisienColors.gold,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )),
+                          const SizedBox(height: 20),
+
+                          _buildAnimatedSection(3, child: GlassCard(
+                            padding: const EdgeInsets.all(14),
+                            borderColor: CafeTunisienColors.gold.withOpacity(0.2),
+                            innerGlow: true,
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.summarize_outlined, color: CafeTunisienColors.goldLight.withOpacity(0.8), size: 16),
+                                    const SizedBox(width: 6),
+                                    Text('Résumé', style: AppTextStyles.labelGold),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '$_numHumans humain${_numHumans > 1 ? 's' : ''} + $_numBots bot${_numBots > 1 ? 's' : ''}\n$_maxRounds manches • Ouverture $_openingThreshold pts • $_numJokers jokers',
+                                  style: AppTextStyles.bodySmall.copyWith(color: Colors.white.withOpacity(0.5)),
+                                  textAlign: TextAlign.center,
                                 ),
                               ],
                             ),
                           )),
-                        ),
+                          const SizedBox(height: 16),
+                        ],
                       ),
-                      const SizedBox(height: 20),
-
-                      // Rules Section
-                      _SectionHeader(icon: '⚙️', title: 'Paramètres'),
-                      const SizedBox(height: 10),
-                      GlassCard(
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                        child: Column(
-                          children: [
-                            _StepperRow(icon: Icons.lock_open, label: 'Seuil d\'ouverture', value: _openingThreshold, min: 0, max: 151, step: 10, suffix: ' pts',
-                              onChanged: (v) => setState(() => _openingThreshold = v)),
-                            Divider(color: Colors.white.withOpacity(0.06), height: 1),
-                            _StepperRow(icon: Icons.repeat, label: 'Manches', value: _maxRounds, min: 1, max: 20,
-                              onChanged: (v) => setState(() => _maxRounds = v)),
-                            Divider(color: Colors.white.withOpacity(0.06), height: 1),
-                            _StepperRow(icon: Icons.style, label: 'Jokers', value: _numJokers, min: 0, max: 8,
-                              onChanged: (v) => setState(() => _numJokers = v)),
-                            Divider(color: Colors.white.withOpacity(0.06), height: 1),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.verified_outlined, color: CafeTunisienColors.gold, size: 20),
-                                  const SizedBox(width: 10),
-                                  Expanded(child: Text('Suite sans joker', style: AppTextStyles.bodyMedium)),
-                                  Switch.adaptive(
-                                    value: _openingRequiresCleanRun,
-                                    onChanged: (v) => setState(() => _openingRequiresCleanRun = v),
-                                    activeColor: CafeTunisienColors.gold,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Summary
-                      GlassCard(
-                        padding: const EdgeInsets.all(14),
-                        borderColor: CafeTunisienColors.gold.withOpacity(0.2),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.summarize_outlined, color: CafeTunisienColors.goldLight, size: 16),
-                                const SizedBox(width: 6),
-                                Text('Résumé', style: AppTextStyles.labelGold),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '$_numHumans humain${_numHumans > 1 ? 's' : ''} + $_numBots bot${_numBots > 1 ? 's' : ''}\n$_maxRounds manches • Ouverture $_openingThreshold pts • $_numJokers jokers',
-                              style: AppTextStyles.bodySmall.copyWith(color: Colors.white.withOpacity(0.5)),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
 
-              // ─── Start Button ────────────────────────
+              // Start Button
               Container(
                 key: const ValueKey('btn_start_game'),
                 width: double.infinity,
@@ -242,7 +282,24 @@ class _OfflineSetupScreenState extends ConsumerState<OfflineSetupScreen> {
     );
   }
 
+  Widget _buildAnimatedSection(int index, {required Widget child}) {
+    final delay = index * 0.15;
+    final progress = CurvedAnimation(
+      parent: _entryCtrl,
+      curve: Interval(delay, (delay + 0.5).clamp(0.0, 1.0), curve: Curves.easeOutCubic),
+    ).value;
+
+    return Opacity(
+      opacity: progress.clamp(0.0, 1.0),
+      child: Transform.translate(
+        offset: Offset(0, 20 * (1 - progress)),
+        child: child,
+      ),
+    );
+  }
+
   void _startGame() {
+    HapticFeedback.mediumImpact();
     final players = <({String id, String name, bool isBot})>[];
     for (int i = 0; i < _numHumans; i++) {
       final name = _nameControllers[i].text.isEmpty ? 'Joueur ${i + 1}' : _nameControllers[i].text;
@@ -263,7 +320,6 @@ class _OfflineSetupScreenState extends ConsumerState<OfflineSetupScreen> {
   }
 }
 
-// ─── Section Header ──────────────────────────────────────────
 class _SectionHeader extends StatelessWidget {
   final String icon;
   final String title;
@@ -275,13 +331,27 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Text(icon, style: const TextStyle(fontSize: 18)),
         const SizedBox(width: 8),
-        Text(title, style: AppTextStyles.titleMedium.copyWith(color: CafeTunisienColors.goldLight, fontSize: 17)),
+        Text(title, style: AppTextStyles.titleMedium.copyWith(
+          color: CafeTunisienColors.goldLight,
+          fontSize: 17,
+          shadows: [Shadow(color: CafeTunisienColors.gold.withOpacity(0.2), blurRadius: 6)],
+        )),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [CafeTunisienColors.gold.withOpacity(0.2), Colors.transparent],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
-// ─── Stepper Row ─────────────────────────────────────────────
 class _StepperRow extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -306,24 +376,28 @@ class _StepperRow extends StatelessWidget {
           Icon(icon, color: CafeTunisienColors.gold, size: 20),
           const SizedBox(width: 10),
           Expanded(child: Text(label, style: AppTextStyles.bodyMedium)),
-          // Minus
           _StepButton(
             icon: Icons.remove,
             enabled: value > min,
             color: CafeTunisienColors.warmRed,
-            onTap: () => onChanged((value - step).clamp(min, max)),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              onChanged((value - step).clamp(min, max));
+            },
           ),
           Container(
             width: 52,
             alignment: Alignment.center,
             child: Text('$value$suffix', style: AppTextStyles.labelGold.copyWith(fontSize: 15)),
           ),
-          // Plus
           _StepButton(
             icon: Icons.add,
             enabled: value < max,
             color: const Color(0xFF4CAF50),
-            onTap: () => onChanged((value + step).clamp(min, max)),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              onChanged((value + step).clamp(min, max));
+            },
           ),
         ],
       ),
@@ -343,12 +417,16 @@ class _StepButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: enabled ? onTap : null,
-      child: Container(
-        width: 32, height: 32,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 34, height: 34,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: enabled ? color.withOpacity(0.15) : Colors.white.withOpacity(0.03),
-          border: Border.all(color: enabled ? color.withOpacity(0.4) : Colors.white.withOpacity(0.05)),
+          border: Border.all(color: enabled ? color.withOpacity(0.5) : Colors.white.withOpacity(0.05)),
+          boxShadow: enabled ? [
+            BoxShadow(color: color.withOpacity(0.15), blurRadius: 6),
+          ] : null,
         ),
         child: Icon(icon, size: 16, color: enabled ? color : Colors.white12),
       ),

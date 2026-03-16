@@ -399,17 +399,18 @@ class _FanHandWidgetState extends State<FanHandWidget>
               end: Alignment.bottomCenter,
               colors: [
                 Color(0xFF5A3015),
-                Color(0xFF4A2810),
+                Color(0xFF4E2B12),
+                Color(0xFF42220E),
                 Color(0xFF3A1E0C),
                 Color(0xFF2C1508),
               ],
-              stops: [0.0, 0.3, 0.7, 1.0],
+              stops: [0.0, 0.2, 0.5, 0.75, 1.0],
             ),
             border: Border(
               top: BorderSide(
                 color: isReceiving
                     ? const Color(0xFF4CAF50).withOpacity(0.8)
-                    : const Color(0xFFD4A017).withOpacity(0.6),
+                    : const Color(0xFFD4A017).withOpacity(0.65),
                 width: isReceiving ? 3 : 1.5,
               ),
             ),
@@ -417,9 +418,15 @@ class _FanHandWidgetState extends State<FanHandWidget>
               BoxShadow(
                 color: isReceiving
                     ? const Color(0xFF4CAF50).withOpacity(0.3)
-                    : Colors.black.withOpacity(0.6),
-                blurRadius: isReceiving ? 20 : 16,
+                    : Colors.black.withOpacity(0.65),
+                blurRadius: isReceiving ? 22 : 18,
                 offset: const Offset(0, -6),
+              ),
+              // Inner warm glow from the top edge
+              BoxShadow(
+                color: const Color(0xFFD4A017).withOpacity(isReceiving ? 0.0 : 0.06),
+                blurRadius: 30,
+                offset: const Offset(0, -2),
               ),
             ],
           ),
@@ -696,12 +703,14 @@ class _FanHandWidgetState extends State<FanHandWidget>
           gradient: const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFFFD700), Colors.white, Color(0xFFFFD700)],
+            colors: [Color(0xFFFFD700), Color(0xFFFFF8E1), Colors.white, Color(0xFFFFF8E1), Color(0xFFFFD700)],
+            stops: [0.0, 0.2, 0.5, 0.8, 1.0],
           ),
           borderRadius: BorderRadius.circular(3),
           boxShadow: [
-            BoxShadow(color: Colors.white.withOpacity(0.9), blurRadius: 14, spreadRadius: 4),
-            BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.7), blurRadius: 22, spreadRadius: 3),
+            BoxShadow(color: Colors.white.withOpacity(0.9), blurRadius: 16, spreadRadius: 5),
+            BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.8), blurRadius: 24, spreadRadius: 4),
+            BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.3), blurRadius: 40, spreadRadius: 6),
           ],
         ),
       ),
